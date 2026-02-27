@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend-lint-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r backend/requirements-dev.txt
+      - run: ruff check backend/src backend/tests
+      - run: ruff format --check backend/src backend/tests
+      - run: cd backend && mypy src --ignore-missing-imports
+      - name: Run tests
+        env:
+          ENVIRONMENT: test
+          AUTH_MODE: mock
+          MONGODB_URI: mongodb://localhost:27017
+          MONGODB_DATABASE: test-medicare
+          ALLOWED_ORIGINS: '["http://localhost:3000"]'
+          FIREBASE_PROJECT_ID: test
+          FIREBASE_CLIENT_EMAIL: test@test.com
+          FIREBASE_PRIVATE_KEY: test
+          ANTHROPIC_API_KEY: test
+        run: cd backend && pytest -q
+
+  ios-build-test:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        run: cd ios && xcodegen generate
+      - name: Build iOS app
+        run: |
+          xcodebuild \
+            -project ios/MediCareAI.xcodeproj \
+            -scheme MediCareAI \
+            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -configuration Debug \
+            build
+      - name: Run iOS tests
+        run: |
+          xcodebuild \
+            -project ios/MediCareAI.xcodeproj \
+            -scheme MediCareAI \
+            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -configuration Debug \
+            test

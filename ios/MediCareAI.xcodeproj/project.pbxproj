@@ -1,0 +1,848 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		08EFBEBB10CDDE4E010E285A /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = D6AFC2FBB170F2E35D67A08A /* GoogleService-Info.plist */; };
+		0FCD78030EAD4D3E20746C75 /* AuthFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD1F57ECCB3B5179D1B3C477 /* AuthFlowTests.swift */; };
+		10395A84F485970DB12C4B24 /* SignUpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87E2C89CE64575BC1D9ECD57 /* SignUpView.swift */; };
+		1104CC579AC266C5BFC3C4D6 /* ErrorHandling.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41135B9CAD5FFFE5CB3C2C29 /* ErrorHandling.swift */; };
+		17F0F3700F4411E4009476D0 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 421D5538B4826807A7226BCC /* OnboardingView.swift */; };
+		1996B37DAD8FFD762A28AF6A /* MockAPIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66F239003A57181C15614988 /* MockAPIService.swift */; };
+		21DF7C988F4A5C186D542254 /* AppEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 502D072DC0A075DC5885F3EE /* AppEnvironment.swift */; };
+		22E7568887F5E4A6613156C1 /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4AEB6CF27ECCE0A2E652649 /* DesignSystem.swift */; };
+		247E0DC4344BEA4D2D657EDF /* MessageBubbleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACBF368C594F16821E0923BF /* MessageBubbleView.swift */; };
+		2C7980515F70EAF432112BA0 /* APIError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16E5742E09F7ED0ABD8226D1 /* APIError.swift */; };
+		2E1617308839354E1A82A2FB /* ForgotPasswordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A25B5C0A1D5A9D7E4E37BD62 /* ForgotPasswordView.swift */; };
+		3040084E42E55CB9B9AF0AB1 /* MediCareAITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E54E3DC1529340CAF9FF5D39 /* MediCareAITests.swift */; };
+		3C98016FBE054BB4D696A94A /* AppContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44D7C8D3471BCCE7E7B80056 /* AppContext.swift */; };
+		48D709C9788A8CB1CA5B313C /* V10Digest.swift in Sources */ = {isa = PBXBuildFile; fileRef = C384EB516885E92FCC5515FA /* V10Digest.swift */; };
+		552F7C9B6450685FB200AA02 /* ConversationListViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3A6BA9E12A33A9E017726A9 /* ConversationListViewModel.swift */; };
+		5798AF7A88B43E73C386F2F4 /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 247AB99B4DDAFEAFD57D8D64 /* KeychainHelper.swift */; };
+		621E29842BBBB8E6378F89A6 /* AnalyticsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1895957DAB96B13D7B2FA519 /* AnalyticsService.swift */; };
+		68D292C65856311CD578E05B /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0409648493B858BD3A21F150 /* ChatView.swift */; };
+		697E3DC41E9C8A27B1B33790 /* ConversationListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39AC259C7BD0023EC1721FBC /* ConversationListView.swift */; };
+		773D9B3541CD20D9E885A3A4 /* DateFormatting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20F1DAEC397247B4318C3169 /* DateFormatting.swift */; };
+		7A26B6814DC0AC89F8378483 /* ChatStreamEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A210812995E77DB076863689 /* ChatStreamEvent.swift */; };
+		7C9A0B93A44C1F9793AE3F98 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7070E4B9B9E343EB2C35333 /* SettingsView.swift */; };
+		8A41838F9AADDCF4C406F9C9 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98DD63D30E860341E72DD345 /* LoginView.swift */; };
+		8BCF9006B1127D6CD72E0790 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 604048DA44ABDB0749D326A0 /* FirebaseCore */; };
+		8E55C3FB78EDCA98015578D0 /* DisclaimerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5831163540AEC320853CC5C /* DisclaimerView.swift */; };
+		8EA5B1B47BB2A8F3611E1FB0 /* V10MemoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E1BC3723636888353D334E6 /* V10MemoryView.swift */; };
+		8EEC71C702F3DE7D5299A955 /* V10ViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E436BB45CE36BCD59C55EB43 /* V10ViewModel.swift */; };
+		8F4987E9B56B78D5308C3905 /* TypingIndicatorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F09FE4C8D2E40888BBE5EB01 /* TypingIndicatorView.swift */; };
+		9DBA745ACD212FCE297521A2 /* EmergencyBannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE591AC2E3743900A6A369BF /* EmergencyBannerView.swift */; };
+		9DBFA0F546CF4D1AE5823A0E /* ChatInputBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC1A06D87AD95380CAF6A5A8 /* ChatInputBar.swift */; };
+		9E09EAEB786BD7AA62CA9046 /* Conversation.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE43B70AD5AFE3C8C8B8ECC6 /* Conversation.swift */; };
+		9E93C43CC9D70848BD43D297 /* EmptyChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67F70E52DB8B5FF50B31DDF6 /* EmptyChatView.swift */; };
+		A24072B57BA5D03A77FF7B85 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 42594E3E8ACD92E781B3E979 /* Assets.xcassets */; };
+		B281ECB0BC6872D46D381FAB /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = B82614B5371F1094C6580BF8 /* FirebaseAuth */; };
+		B76D88468FED91D6CD568B83 /* Coding.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C13E60467E87D8D7E62B31C /* Coding.swift */; };
+		BA263CD748E63E025B7EE140 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 256F21E42C51CA5909FCDF37 /* AboutView.swift */; };
+		C138FCBEBC58C67CB1F013CD /* AuthViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 170925A5D9222C2271F0420D /* AuthViewModel.swift */; };
+		C36E8A4C083CF2BEE49E5228 /* StreamingTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6B266AC5373B73363B8A004 /* StreamingTextView.swift */; };
+		CE2F687C558D0EBDBE224E1B /* V10EditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9246D1FCF5A730C9129C02A /* V10EditorView.swift */; };
+		D4C064B620D7FF2C14606EA0 /* CitationDetailSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 260AF16DC6018AE7E36EC130 /* CitationDetailSheet.swift */; };
+		D65B5C58164CBC2D5AC0028E /* DeleteAccountView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 654703BEAA19C7A548213A6E /* DeleteAccountView.swift */; };
+		D6E87EB54BE83293E6A4E9C6 /* AuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F649B3C525490874EE0CD217 /* AuthService.swift */; };
+		DA68B8DB5761D0E6A893F99A /* CitationBadgeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3ECC659D04CD567CFA7ECD9 /* CitationBadgeView.swift */; };
+		DE508E3E663A6462699BB400 /* SettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4227B93327D3CE0AFCA1B5A5 /* SettingsViewModel.swift */; };
+		E2C25CEACA228CD1669802A1 /* UserSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CAE49A987F485827CE8174E /* UserSettings.swift */; };
+		E3FBB4AC1CF419EDB4A406A3 /* Message.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4121C9B95E912E9DEAB7BAB3 /* Message.swift */; };
+		E78F4CFE3CB71B76766A721A /* LiveE2ETests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FCB2CD7D8E5B59B530B972B /* LiveE2ETests.swift */; };
+		E7905FEADC8F7CABC6682B68 /* ChatViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64BDF863853D9CBB045E31BE /* ChatViewModel.swift */; };
+		E7BDCB68A6B131F632FDB1BB /* MediCareAIApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A81C2C438538A5DBDC99F117 /* MediCareAIApp.swift */; };
+		F1A1A005C04564AA50C127E4 /* APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC8AE450AC91279191BB14A4 /* APIService.swift */; };
+		F4C5144CBC9D0A61D66C4456 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FE9F2CFECA4C5E853383AEC /* RootView.swift */; };
+		FEEB4FC53E08734535462512 /* SSEClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F7BC3CE754E8A67307643D /* SSEClient.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		0BECC63677413703CDE60C27 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 41D51B0ED0EEE737368A5029 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 6A5A4D414604D76665C0DB61;
+			remoteInfo = MediCareAI;
+		};
+		BF7A780959DB760BBFD9CE5C /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 41D51B0ED0EEE737368A5029 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 6A5A4D414604D76665C0DB61;
+			remoteInfo = MediCareAI;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		026EFA296916054DBD4E74F9 /* MediCareAIUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = MediCareAIUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		0409648493B858BD3A21F150 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
+		16E5742E09F7ED0ABD8226D1 /* APIError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIError.swift; sourceTree = "<group>"; };
+		170925A5D9222C2271F0420D /* AuthViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthViewModel.swift; sourceTree = "<group>"; };
+		1895957DAB96B13D7B2FA519 /* AnalyticsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsService.swift; sourceTree = "<group>"; };
+		20F1DAEC397247B4318C3169 /* DateFormatting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DateFormatting.swift; sourceTree = "<group>"; };
+		247AB99B4DDAFEAFD57D8D64 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
+		256F21E42C51CA5909FCDF37 /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
+		260AF16DC6018AE7E36EC130 /* CitationDetailSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CitationDetailSheet.swift; sourceTree = "<group>"; };
+		39AC259C7BD0023EC1721FBC /* ConversationListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationListView.swift; sourceTree = "<group>"; };
+		3FCB2CD7D8E5B59B530B972B /* LiveE2ETests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveE2ETests.swift; sourceTree = "<group>"; };
+		41135B9CAD5FFFE5CB3C2C29 /* ErrorHandling.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorHandling.swift; sourceTree = "<group>"; };
+		4121C9B95E912E9DEAB7BAB3 /* Message.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Message.swift; sourceTree = "<group>"; };
+		421D5538B4826807A7226BCC /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		4227B93327D3CE0AFCA1B5A5 /* SettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewModel.swift; sourceTree = "<group>"; };
+		42594E3E8ACD92E781B3E979 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		44D7C8D3471BCCE7E7B80056 /* AppContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppContext.swift; sourceTree = "<group>"; };
+		502D072DC0A075DC5885F3EE /* AppEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEnvironment.swift; sourceTree = "<group>"; };
+		5E1BC3723636888353D334E6 /* V10MemoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = V10MemoryView.swift; sourceTree = "<group>"; };
+		64BDF863853D9CBB045E31BE /* ChatViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatViewModel.swift; sourceTree = "<group>"; };
+		654703BEAA19C7A548213A6E /* DeleteAccountView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeleteAccountView.swift; sourceTree = "<group>"; };
+		66F239003A57181C15614988 /* MockAPIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockAPIService.swift; sourceTree = "<group>"; };
+		67F70E52DB8B5FF50B31DDF6 /* EmptyChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmptyChatView.swift; sourceTree = "<group>"; };
+		6C13E60467E87D8D7E62B31C /* Coding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Coding.swift; sourceTree = "<group>"; };
+		779A9A14B7E348C0DE024C62 /* MediCareAITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = MediCareAITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		7CAE49A987F485827CE8174E /* UserSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserSettings.swift; sourceTree = "<group>"; };
+		87E2C89CE64575BC1D9ECD57 /* SignUpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignUpView.swift; sourceTree = "<group>"; };
+		98DD63D30E860341E72DD345 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
+		9FE9F2CFECA4C5E853383AEC /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		A210812995E77DB076863689 /* ChatStreamEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatStreamEvent.swift; sourceTree = "<group>"; };
+		A25B5C0A1D5A9D7E4E37BD62 /* ForgotPasswordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForgotPasswordView.swift; sourceTree = "<group>"; };
+		A5831163540AEC320853CC5C /* DisclaimerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisclaimerView.swift; sourceTree = "<group>"; };
+		A81C2C438538A5DBDC99F117 /* MediCareAIApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediCareAIApp.swift; sourceTree = "<group>"; };
+		AC8AE450AC91279191BB14A4 /* APIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIService.swift; sourceTree = "<group>"; };
+		ACBF368C594F16821E0923BF /* MessageBubbleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageBubbleView.swift; sourceTree = "<group>"; };
+		B3A6BA9E12A33A9E017726A9 /* ConversationListViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationListViewModel.swift; sourceTree = "<group>"; };
+		B4AEB6CF27ECCE0A2E652649 /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem.swift; sourceTree = "<group>"; };
+		B7070E4B9B9E343EB2C35333 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		C384EB516885E92FCC5515FA /* V10Digest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = V10Digest.swift; sourceTree = "<group>"; };
+		C8F7BC3CE754E8A67307643D /* SSEClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSEClient.swift; sourceTree = "<group>"; };
+		CD1F57ECCB3B5179D1B3C477 /* AuthFlowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthFlowTests.swift; sourceTree = "<group>"; };
+		D6AFC2FBB170F2E35D67A08A /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
+		D6B266AC5373B73363B8A004 /* StreamingTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamingTextView.swift; sourceTree = "<group>"; };
+		D9246D1FCF5A730C9129C02A /* V10EditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = V10EditorView.swift; sourceTree = "<group>"; };
+		DE591AC2E3743900A6A369BF /* EmergencyBannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmergencyBannerView.swift; sourceTree = "<group>"; };
+		E436BB45CE36BCD59C55EB43 /* V10ViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = V10ViewModel.swift; sourceTree = "<group>"; };
+		E54E3DC1529340CAF9FF5D39 /* MediCareAITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediCareAITests.swift; sourceTree = "<group>"; };
+		EB3564B8D4CAB8286A26855D /* MediCareAI.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = MediCareAI.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		EE43B70AD5AFE3C8C8B8ECC6 /* Conversation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Conversation.swift; sourceTree = "<group>"; };
+		F09FE4C8D2E40888BBE5EB01 /* TypingIndicatorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TypingIndicatorView.swift; sourceTree = "<group>"; };
+		F3ECC659D04CD567CFA7ECD9 /* CitationBadgeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CitationBadgeView.swift; sourceTree = "<group>"; };
+		F649B3C525490874EE0CD217 /* AuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthService.swift; sourceTree = "<group>"; };
+		FC1A06D87AD95380CAF6A5A8 /* ChatInputBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatInputBar.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		7443C560CD348460FBECBB3E /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8BCF9006B1127D6CD72E0790 /* FirebaseCore in Frameworks */,
+				B281ECB0BC6872D46D381FAB /* FirebaseAuth in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		0300EED190A1D6342A2967F4 /* Auth */ = {
+			isa = PBXGroup;
+			children = (
+				A25B5C0A1D5A9D7E4E37BD62 /* ForgotPasswordView.swift */,
+				98DD63D30E860341E72DD345 /* LoginView.swift */,
+				87E2C89CE64575BC1D9ECD57 /* SignUpView.swift */,
+			);
+			path = Auth;
+			sourceTree = "<group>";
+		};
+		12D343C0CFF2EDA526E52CBC /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				42594E3E8ACD92E781B3E979 /* Assets.xcassets */,
+				D6AFC2FBB170F2E35D67A08A /* GoogleService-Info.plist */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		37739C328B2E7B408DBE0D03 /* MediCareAI */ = {
+			isa = PBXGroup;
+			children = (
+				B5716A253E9984C45DB666EC /* App */,
+				3E2D129DB7B5301C9A43960F /* Models */,
+				12D343C0CFF2EDA526E52CBC /* Resources */,
+				F71E8510C98F10170353A0FC /* Services */,
+				9E88BDF881C16C3E484D4FBF /* Utilities */,
+				DD7225F0E6E7B7E6ABCA3208 /* ViewModels */,
+				80CA32036D1C91E3B56D90F2 /* Views */,
+			);
+			path = MediCareAI;
+			sourceTree = "<group>";
+		};
+		39B8B96C7CA445129A46864C /* MediCareAIUITests */ = {
+			isa = PBXGroup;
+			children = (
+				CD1F57ECCB3B5179D1B3C477 /* AuthFlowTests.swift */,
+				3FCB2CD7D8E5B59B530B972B /* LiveE2ETests.swift */,
+			);
+			path = MediCareAIUITests;
+			sourceTree = "<group>";
+		};
+		3E2D129DB7B5301C9A43960F /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				16E5742E09F7ED0ABD8226D1 /* APIError.swift */,
+				A210812995E77DB076863689 /* ChatStreamEvent.swift */,
+				EE43B70AD5AFE3C8C8B8ECC6 /* Conversation.swift */,
+				4121C9B95E912E9DEAB7BAB3 /* Message.swift */,
+				7CAE49A987F485827CE8174E /* UserSettings.swift */,
+				C384EB516885E92FCC5515FA /* V10Digest.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		4EF5233B87639D926F1D0071 /* V10 */ = {
+			isa = PBXGroup;
+			children = (
+				D9246D1FCF5A730C9129C02A /* V10EditorView.swift */,
+				5E1BC3723636888353D334E6 /* V10MemoryView.swift */,
+			);
+			path = V10;
+			sourceTree = "<group>";
+		};
+		5EE0293E7ABFC115C50288BC /* Chat */ = {
+			isa = PBXGroup;
+			children = (
+				FC1A06D87AD95380CAF6A5A8 /* ChatInputBar.swift */,
+				0409648493B858BD3A21F150 /* ChatView.swift */,
+				F3ECC659D04CD567CFA7ECD9 /* CitationBadgeView.swift */,
+				260AF16DC6018AE7E36EC130 /* CitationDetailSheet.swift */,
+				DE591AC2E3743900A6A369BF /* EmergencyBannerView.swift */,
+				67F70E52DB8B5FF50B31DDF6 /* EmptyChatView.swift */,
+				ACBF368C594F16821E0923BF /* MessageBubbleView.swift */,
+				D6B266AC5373B73363B8A004 /* StreamingTextView.swift */,
+				F09FE4C8D2E40888BBE5EB01 /* TypingIndicatorView.swift */,
+			);
+			path = Chat;
+			sourceTree = "<group>";
+		};
+		6B6DA3A72A3EE69EE6385CAE /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				256F21E42C51CA5909FCDF37 /* AboutView.swift */,
+				654703BEAA19C7A548213A6E /* DeleteAccountView.swift */,
+				B7070E4B9B9E343EB2C35333 /* SettingsView.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		6B968A0A58D5116609025D0E /* MediCareAITests */ = {
+			isa = PBXGroup;
+			children = (
+				E54E3DC1529340CAF9FF5D39 /* MediCareAITests.swift */,
+			);
+			path = MediCareAITests;
+			sourceTree = "<group>";
+		};
+		80CA32036D1C91E3B56D90F2 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				0300EED190A1D6342A2967F4 /* Auth */,
+				5EE0293E7ABFC115C50288BC /* Chat */,
+				863F497DB9B2FEB335BA727E /* Conversations */,
+				F1415945BF9F93CCC011D8D5 /* Onboarding */,
+				6B6DA3A72A3EE69EE6385CAE /* Settings */,
+				4EF5233B87639D926F1D0071 /* V10 */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		863F497DB9B2FEB335BA727E /* Conversations */ = {
+			isa = PBXGroup;
+			children = (
+				39AC259C7BD0023EC1721FBC /* ConversationListView.swift */,
+			);
+			path = Conversations;
+			sourceTree = "<group>";
+		};
+		881E666337682D8BEE90309A = {
+			isa = PBXGroup;
+			children = (
+				37739C328B2E7B408DBE0D03 /* MediCareAI */,
+				6B968A0A58D5116609025D0E /* MediCareAITests */,
+				39B8B96C7CA445129A46864C /* MediCareAIUITests */,
+				94986AE10B5B3D2DF73DB97E /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		94986AE10B5B3D2DF73DB97E /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				EB3564B8D4CAB8286A26855D /* MediCareAI.app */,
+				779A9A14B7E348C0DE024C62 /* MediCareAITests.xctest */,
+				026EFA296916054DBD4E74F9 /* MediCareAIUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		9E88BDF881C16C3E484D4FBF /* Utilities */ = {
+			isa = PBXGroup;
+			children = (
+				6C13E60467E87D8D7E62B31C /* Coding.swift */,
+				20F1DAEC397247B4318C3169 /* DateFormatting.swift */,
+				B4AEB6CF27ECCE0A2E652649 /* DesignSystem.swift */,
+				41135B9CAD5FFFE5CB3C2C29 /* ErrorHandling.swift */,
+				247AB99B4DDAFEAFD57D8D64 /* KeychainHelper.swift */,
+			);
+			path = Utilities;
+			sourceTree = "<group>";
+		};
+		B5716A253E9984C45DB666EC /* App */ = {
+			isa = PBXGroup;
+			children = (
+				44D7C8D3471BCCE7E7B80056 /* AppContext.swift */,
+				A81C2C438538A5DBDC99F117 /* MediCareAIApp.swift */,
+				9FE9F2CFECA4C5E853383AEC /* RootView.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		DD7225F0E6E7B7E6ABCA3208 /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				170925A5D9222C2271F0420D /* AuthViewModel.swift */,
+				64BDF863853D9CBB045E31BE /* ChatViewModel.swift */,
+				B3A6BA9E12A33A9E017726A9 /* ConversationListViewModel.swift */,
+				4227B93327D3CE0AFCA1B5A5 /* SettingsViewModel.swift */,
+				E436BB45CE36BCD59C55EB43 /* V10ViewModel.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		F1415945BF9F93CCC011D8D5 /* Onboarding */ = {
+			isa = PBXGroup;
+			children = (
+				A5831163540AEC320853CC5C /* DisclaimerView.swift */,
+				421D5538B4826807A7226BCC /* OnboardingView.swift */,
+			);
+			path = Onboarding;
+			sourceTree = "<group>";
+		};
+		F71E8510C98F10170353A0FC /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				1895957DAB96B13D7B2FA519 /* AnalyticsService.swift */,
+				AC8AE450AC91279191BB14A4 /* APIService.swift */,
+				502D072DC0A075DC5885F3EE /* AppEnvironment.swift */,
+				F649B3C525490874EE0CD217 /* AuthService.swift */,
+				66F239003A57181C15614988 /* MockAPIService.swift */,
+				C8F7BC3CE754E8A67307643D /* SSEClient.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		6A5A4D414604D76665C0DB61 /* MediCareAI */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F3AD832FF0679F6E74F4B5EA /* Build configuration list for PBXNativeTarget "MediCareAI" */;
+			buildPhases = (
+				983C962F5E03CB8E4601A0CE /* Sources */,
+				9F37E5DB5F4B5A8D319FB6BD /* Resources */,
+				7443C560CD348460FBECBB3E /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = MediCareAI;
+			packageProductDependencies = (
+				604048DA44ABDB0749D326A0 /* FirebaseCore */,
+				B82614B5371F1094C6580BF8 /* FirebaseAuth */,
+			);
+			productName = MediCareAI;
+			productReference = EB3564B8D4CAB8286A26855D /* MediCareAI.app */;
+			productType = "com.apple.product-type.application";
+		};
+		7389E288DA5353D5B609575A /* MediCareAIUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1EA41680B352E2EF03DF8D4E /* Build configuration list for PBXNativeTarget "MediCareAIUITests" */;
+			buildPhases = (
+				216E2833FEDFE0EBA277802D /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				C317585436C0F4B5CF5C1A1C /* PBXTargetDependency */,
+			);
+			name = MediCareAIUITests;
+			packageProductDependencies = (
+			);
+			productName = MediCareAIUITests;
+			productReference = 026EFA296916054DBD4E74F9 /* MediCareAIUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		E68FAAD89D319330F999C3AF /* MediCareAITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 153E5D4A46C591D669A373ED /* Build configuration list for PBXNativeTarget "MediCareAITests" */;
+			buildPhases = (
+				70E215B57FAD14EFC7ED7A7C /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				184004C3D0C8BEE31FEDDD5A /* PBXTargetDependency */,
+			);
+			name = MediCareAITests;
+			packageProductDependencies = (
+			);
+			productName = MediCareAITests;
+			productReference = 779A9A14B7E348C0DE024C62 /* MediCareAITests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		41D51B0ED0EEE737368A5029 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					7389E288DA5353D5B609575A = {
+						TestTargetID = 6A5A4D414604D76665C0DB61;
+					};
+				};
+			};
+			buildConfigurationList = 2595DAC1D88A1DB269EC2028 /* Build configuration list for PBXProject "MediCareAI" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 881E666337682D8BEE90309A;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				CF9450425BFD5FA571742F5A /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+			);
+			preferredProjectObjectVersion = 77;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				6A5A4D414604D76665C0DB61 /* MediCareAI */,
+				E68FAAD89D319330F999C3AF /* MediCareAITests */,
+				7389E288DA5353D5B609575A /* MediCareAIUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		9F37E5DB5F4B5A8D319FB6BD /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A24072B57BA5D03A77FF7B85 /* Assets.xcassets in Resources */,
+				08EFBEBB10CDDE4E010E285A /* GoogleService-Info.plist in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		216E2833FEDFE0EBA277802D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0FCD78030EAD4D3E20746C75 /* AuthFlowTests.swift in Sources */,
+				E78F4CFE3CB71B76766A721A /* LiveE2ETests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		70E215B57FAD14EFC7ED7A7C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3040084E42E55CB9B9AF0AB1 /* MediCareAITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		983C962F5E03CB8E4601A0CE /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2C7980515F70EAF432112BA0 /* APIError.swift in Sources */,
+				F1A1A005C04564AA50C127E4 /* APIService.swift in Sources */,
+				BA263CD748E63E025B7EE140 /* AboutView.swift in Sources */,
+				621E29842BBBB8E6378F89A6 /* AnalyticsService.swift in Sources */,
+				3C98016FBE054BB4D696A94A /* AppContext.swift in Sources */,
+				21DF7C988F4A5C186D542254 /* AppEnvironment.swift in Sources */,
+				D6E87EB54BE83293E6A4E9C6 /* AuthService.swift in Sources */,
+				C138FCBEBC58C67CB1F013CD /* AuthViewModel.swift in Sources */,
+				9DBFA0F546CF4D1AE5823A0E /* ChatInputBar.swift in Sources */,
+				7A26B6814DC0AC89F8378483 /* ChatStreamEvent.swift in Sources */,
+				68D292C65856311CD578E05B /* ChatView.swift in Sources */,
+				E7905FEADC8F7CABC6682B68 /* ChatViewModel.swift in Sources */,
+				DA68B8DB5761D0E6A893F99A /* CitationBadgeView.swift in Sources */,
+				D4C064B620D7FF2C14606EA0 /* CitationDetailSheet.swift in Sources */,
+				B76D88468FED91D6CD568B83 /* Coding.swift in Sources */,
+				9E09EAEB786BD7AA62CA9046 /* Conversation.swift in Sources */,
+				697E3DC41E9C8A27B1B33790 /* ConversationListView.swift in Sources */,
+				552F7C9B6450685FB200AA02 /* ConversationListViewModel.swift in Sources */,
+				773D9B3541CD20D9E885A3A4 /* DateFormatting.swift in Sources */,
+				D65B5C58164CBC2D5AC0028E /* DeleteAccountView.swift in Sources */,
+				22E7568887F5E4A6613156C1 /* DesignSystem.swift in Sources */,
+				8E55C3FB78EDCA98015578D0 /* DisclaimerView.swift in Sources */,
+				9DBA745ACD212FCE297521A2 /* EmergencyBannerView.swift in Sources */,
+				9E93C43CC9D70848BD43D297 /* EmptyChatView.swift in Sources */,
+				1104CC579AC266C5BFC3C4D6 /* ErrorHandling.swift in Sources */,
+				2E1617308839354E1A82A2FB /* ForgotPasswordView.swift in Sources */,
+				5798AF7A88B43E73C386F2F4 /* KeychainHelper.swift in Sources */,
+				8A41838F9AADDCF4C406F9C9 /* LoginView.swift in Sources */,
+				E7BDCB68A6B131F632FDB1BB /* MediCareAIApp.swift in Sources */,
+				E3FBB4AC1CF419EDB4A406A3 /* Message.swift in Sources */,
+				247E0DC4344BEA4D2D657EDF /* MessageBubbleView.swift in Sources */,
+				1996B37DAD8FFD762A28AF6A /* MockAPIService.swift in Sources */,
+				17F0F3700F4411E4009476D0 /* OnboardingView.swift in Sources */,
+				F4C5144CBC9D0A61D66C4456 /* RootView.swift in Sources */,
+				FEEB4FC53E08734535462512 /* SSEClient.swift in Sources */,
+				7C9A0B93A44C1F9793AE3F98 /* SettingsView.swift in Sources */,
+				DE508E3E663A6462699BB400 /* SettingsViewModel.swift in Sources */,
+				10395A84F485970DB12C4B24 /* SignUpView.swift in Sources */,
+				C36E8A4C083CF2BEE49E5228 /* StreamingTextView.swift in Sources */,
+				8F4987E9B56B78D5308C3905 /* TypingIndicatorView.swift in Sources */,
+				E2C25CEACA228CD1669802A1 /* UserSettings.swift in Sources */,
+				48D709C9788A8CB1CA5B313C /* V10Digest.swift in Sources */,
+				CE2F687C558D0EBDBE224E1B /* V10EditorView.swift in Sources */,
+				8EA5B1B47BB2A8F3611E1FB0 /* V10MemoryView.swift in Sources */,
+				8EEC71C702F3DE7D5299A955 /* V10ViewModel.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		184004C3D0C8BEE31FEDDD5A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 6A5A4D414604D76665C0DB61 /* MediCareAI */;
+			targetProxy = BF7A780959DB760BBFD9CE5C /* PBXContainerItemProxy */;
+		};
+		C317585436C0F4B5CF5C1A1C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 6A5A4D414604D76665C0DB61 /* MediCareAI */;
+			targetProxy = 0BECC63677413703CDE60C27 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		23D8C206974AE26DBF681709 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.medicareai.app.tests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/MediCareAI.app/MediCareAI";
+			};
+			name = Release;
+		};
+		3329BA4CDDF02914052C69F9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.medicareai.app.tests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/MediCareAI.app/MediCareAI";
+			};
+			name = Debug;
+		};
+		362306BFE589A1EDC15442E0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "MediCare AI";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.medicareai.app;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		47BBA5863812E24AEDA9C03B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.medicareai.app.uitests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = MediCareAI;
+			};
+			name = Debug;
+		};
+		52E3E7AA16EC6B6A5F2D7EA2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "MediCare AI";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.medicareai.app;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		67C361BAEF75FBC2538D3205 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.medicareai.app.uitests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = MediCareAI;
+			};
+			name = Release;
+		};
+		76B0A0C5CACDE28173462394 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		800D2E2AE709386E3EEB4D19 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		153E5D4A46C591D669A373ED /* Build configuration list for PBXNativeTarget "MediCareAITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3329BA4CDDF02914052C69F9 /* Debug */,
+				23D8C206974AE26DBF681709 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		1EA41680B352E2EF03DF8D4E /* Build configuration list for PBXNativeTarget "MediCareAIUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				47BBA5863812E24AEDA9C03B /* Debug */,
+				67C361BAEF75FBC2538D3205 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		2595DAC1D88A1DB269EC2028 /* Build configuration list for PBXProject "MediCareAI" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				76B0A0C5CACDE28173462394 /* Debug */,
+				800D2E2AE709386E3EEB4D19 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		F3AD832FF0679F6E74F4B5EA /* Build configuration list for PBXNativeTarget "MediCareAI" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				52E3E7AA16EC6B6A5F2D7EA2 /* Debug */,
+				362306BFE589A1EDC15442E0 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		CF9450425BFD5FA571742F5A /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 11.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		604048DA44ABDB0749D326A0 /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = CF9450425BFD5FA571742F5A /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+		B82614B5371F1094C6580BF8 /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = CF9450425BFD5FA571742F5A /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 41D51B0ED0EEE737368A5029 /* Project object */;
+}

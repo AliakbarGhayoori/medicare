@@ -1,0 +1,32 @@
+# macOS
+.DS_Store
+
+# Local agent state
+.claude/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+!backend/.env.live.example
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+backend/.venv/
+
+# Build / logs
+*.log
+backend/live_e2e_report.json
+
+# Xcode / iOS
+DerivedData/
+*.xcresult
+ios/.build/
+ios/Pods/
+ios/**/*.xcodeproj/xcuserdata/
+ios/**/*.xcworkspace/xcuserdata/
