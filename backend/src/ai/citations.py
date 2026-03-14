@@ -15,12 +15,15 @@ class Citation:
 
 
 _SOURCES_BLOCK_REGEX = re.compile(
-    r"\n(?:Sources|References):\s*\n((?:\[\d+\].+\n?)+)",
+    r"\n(?:#{1,4}\s+)?\**(?:Sources|References)\**:?\**\s*\n"
+    r"((?:(?:\[\d+\]|\d+\.)\s*.+\n?)+)",
     re.IGNORECASE,
 )
 _CITATION_LINE_REGEX = re.compile(
-    r'^\[(\d+)\]\s*(.+?)(?:\s*[-–]\s*["“](.+?)["”])?\s*(?:\((https?://\S+)\))?\s*$'
+    r'^\[(\d+)\]\s*(.+?)(?:\s*[-\u2013]\s*["\u201c](.+?)["\u201d])?\s*(?:\((https?://\S+)\))?\s*$'
 )
+# Markdown link format: 1. [Title](https://url)
+_CITATION_LINE_MD_REGEX = re.compile(r"^(\d+)\.\s*\[(.+?)\]\((https?://\S+?)\)\s*$")
 
 
 def extract_citations_from_response(response_text: str) -> tuple[str, list[Citation]]:
@@ -33,14 +36,27 @@ def extract_citations_from_response(response_text: str) -> tuple[str, list[Citat
 
     citations: list[Citation] = []
     for line in sources_block.strip().splitlines():
-        parsed = _CITATION_LINE_REGEX.match(line.strip())
-        if not parsed:
+        line_stripped = line.strip()
+        parsed = _CITATION_LINE_REGEX.match(line_stripped)
+        if parsed:
+            number = int(parsed.group(1))
+            source = (parsed.group(2) or "").strip()
+            title = (parsed.group(3) or source).strip()
+            url = (parsed.group(4) or "").strip()
+            citations.append(Citation(number=number, source=source, title=title, url=url))
             continue
-        number = int(parsed.group(1))
-        source = (parsed.group(2) or "").strip()
-        title = (parsed.group(3) or source).strip()
-        url = (parsed.group(4) or "").strip()
-        citations.append(Citation(number=number, source=source, title=title, url=url, snippet=""))
+        parsed_md = _CITATION_LINE_MD_REGEX.match(line_stripped)
+        if parsed_md:
+            number = int(parsed_md.group(1))
+            title = (parsed_md.group(2) or "").strip()
+            url = (parsed_md.group(3) or "").strip()
+            # Extract domain as source name
+            try:
+                domain = urllib.parse.urlparse(url).netloc
+                source = domain.removeprefix("www.")
+            except Exception:
+                source = title
+            citations.append(Citation(number=number, source=source, title=title, url=url))
 
     return clean_text, citations
 

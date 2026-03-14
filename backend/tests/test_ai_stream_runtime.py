@@ -87,7 +87,9 @@ async def test_model_can_make_tool_calls_and_then_return_text(monkeypatch, ai_se
     fake_messages = _FakeMessages(
         create_responses=[
             _tool_use_response("dizziness older adults causes red flags"),
-            _text_response("Final answer with evidence [1].\n\nSources:\n[1] Example (https://a.org)\n"),
+            _text_response(
+                "Final answer with evidence [1].\n\nSources:\n[1] Example (https://a.org)\n"
+            ),
         ]
     )
     fake_client = _FakeClient(fake_messages)

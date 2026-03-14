@@ -128,8 +128,8 @@ def _mock_response(question: str, v10_digest: str | None) -> str:
             "- Do not drive yourself.\n"
             "- Keep emergency contacts informed.\n\n"
             "Sources:\n"
-            "[1] Mayo Clinic - \"Heart attack\" (https://www.mayoclinic.org/diseases-conditions/heart-attack/)\n"
-            "SAFETY_SIGNAL: {\"requiresEmergencyCare\": true, \"category\": \"cardiac\"}\n"
+            '[1] Mayo Clinic - "Heart attack" (https://www.mayoclinic.org/diseases-conditions/heart-attack/)\n'
+            'SAFETY_SIGNAL: {"requiresEmergencyCare": true, "category": "cardiac"}\n'
         )
 
     return (
@@ -141,8 +141,8 @@ def _mock_response(question: str, v10_digest: str | None) -> str:
         "- If symptoms persist, see your doctor within 24 hours.\n"
         "- If symptoms suddenly worsen, seek urgent care.\n\n"
         "Sources:\n"
-        "[1] Mayo Clinic - \"Dizziness\" (https://www.mayoclinic.org/symptoms/dizziness/)\n"
-        "SAFETY_SIGNAL: {\"requiresEmergencyCare\": false, \"category\": \"none\"}\n"
+        '[1] Mayo Clinic - "Dizziness" (https://www.mayoclinic.org/symptoms/dizziness/)\n'
+        'SAFETY_SIGNAL: {"requiresEmergencyCare": false, "category": "none"}\n'
     )
 
 
@@ -306,7 +306,7 @@ async def _execute_tool_call(tool_call: dict[str, Any]) -> dict[str, Any]:
                 else None
             ),
             max_results=(
-                int(tool_input.get("max_results"))
+                int(tool_input["max_results"])
                 if isinstance(tool_input.get("max_results"), int)
                 else None
             ),

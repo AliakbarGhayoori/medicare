@@ -140,7 +140,9 @@ async def ask(
                         },
                     )
 
-            signaled_text, requires_emergency_care, emergency_category = extract_ai_safety_signal(full_text)
+            signaled_text, requires_emergency_care, emergency_category = extract_ai_safety_signal(
+                full_text
+            )
             clean_text, citations = extract_citations_from_response(signaled_text)
             citations = validate_citations(clean_text, citations)
             confidence = assess_confidence(clean_text, citations)

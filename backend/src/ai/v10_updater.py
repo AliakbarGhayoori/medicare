@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import re
 from typing import Any, cast
 
@@ -10,6 +11,8 @@ from src.ai.prompts import V10_UPDATE_SYSTEM_PROMPT, V10_UPDATE_USER_TEMPLATE
 from src.config import get_settings
 from src.services.profile_service import get_v10_digest, upsert_v10_digest
 from src.utils import utcnow
+
+logger = logging.getLogger(__name__)
 
 _NON_MEDICAL_PATTERNS = [
     r"^(thanks?|thank you|ok|okay|got it|great|bye|goodbye)\s*[!.]*$",
@@ -104,6 +107,7 @@ async def update_v10_after_conversation(
                 assistant_response=assistant_response,
             )
         except Exception:
+            logger.warning("V10 AI update failed, falling back to heuristic", exc_info=True)
             next_digest = ""
 
     if not next_digest:

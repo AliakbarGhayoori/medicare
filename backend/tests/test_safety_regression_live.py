@@ -32,16 +32,24 @@ CITATION_SCENARIOS = [
 
 
 def _live_settings() -> SimpleNamespace:
-    api_key = os.getenv("ANTHROPIC_API_KEY", "")
+    api_key = os.getenv("ANTHROPIC_API_KEY", "") or os.getenv("OPENROUTER_API_KEY", "")
     if not api_key:
-        pytest.skip("ANTHROPIC_API_KEY is required for live safety regression tests.")
+        pytest.skip("ANTHROPIC_API_KEY or OPENROUTER_API_KEY required for live safety tests.")
     tavily_api_key = os.getenv("TAVILY_API_KEY", "")
     if not tavily_api_key:
         pytest.skip("TAVILY_API_KEY is required for live safety regression tests.")
 
+    ai_provider = os.getenv("AI_PROVIDER", "anthropic")
+    openrouter_api_key = os.getenv("OPENROUTER_API_KEY", "")
+
     return SimpleNamespace(
         mock_ai=False,
+        ai_provider=ai_provider,
         anthropic_api_key=api_key,
+        openrouter_api_key=openrouter_api_key,
+        openrouter_base_url=os.getenv("OPENROUTER_BASE_URL", ""),
+        openrouter_site_url=os.getenv("OPENROUTER_SITE_URL", ""),
+        openrouter_app_name=os.getenv("OPENROUTER_APP_NAME", ""),
         anthropic_model=os.getenv("ANTHROPIC_MODEL", "claude-opus-4-6-20250219"),
         anthropic_max_tokens=int(os.getenv("ANTHROPIC_MAX_TOKENS", "1024")),
         ai_temperature=float(os.getenv("AI_TEMPERATURE", "0.3")),
@@ -62,7 +70,21 @@ def _live_settings() -> SimpleNamespace:
 
 async def _ask_live(monkeypatch: pytest.MonkeyPatch, question: str) -> str:
     settings = _live_settings()
-    client = AsyncAnthropic(api_key=settings.anthropic_api_key)
+
+    if settings.ai_provider == "openrouter":
+        api_key = settings.openrouter_api_key or settings.anthropic_api_key
+        headers: dict[str, str] = {}
+        if settings.openrouter_site_url:
+            headers["HTTP-Referer"] = settings.openrouter_site_url
+        if settings.openrouter_app_name:
+            headers["X-Title"] = settings.openrouter_app_name
+        client = AsyncAnthropic(
+            api_key=api_key,
+            base_url=settings.openrouter_base_url,
+            default_headers=headers or None,
+        )
+    else:
+        client = AsyncAnthropic(api_key=settings.anthropic_api_key)
 
     monkeypatch.setattr("src.ai.stream.get_settings", lambda: settings)
     monkeypatch.setattr("src.ai.stream.get_anthropic_client", lambda: client)

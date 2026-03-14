@@ -24,7 +24,9 @@ def test_detect_emergency_negative() -> None:
 def test_check_emergency_from_response_language() -> None:
     detected, category = check_emergency(
         user_question="I feel unwell",
-        ai_response="This may be a medical emergency with chest pain and trouble breathing. Call 911 now.",
+        ai_response=(
+            "This may be a medical emergency with chest pain and trouble breathing. Call 911 now."
+        ),
     )
     assert detected is True
     assert category in {"breathing", "cardiac", "general", None}
@@ -60,7 +62,7 @@ def test_assess_confidence_levels() -> None:
 
 def test_extract_ai_safety_signal_positive() -> None:
     text, requires_emergency, category = extract_ai_safety_signal(
-        "Advice text.\nSAFETY_SIGNAL: {\"requiresEmergencyCare\": true, \"category\": \"cardiac\"}"
+        'Advice text.\nSAFETY_SIGNAL: {"requiresEmergencyCare": true, "category": "cardiac"}'
     )
     assert text == "Advice text."
     assert requires_emergency is True
@@ -69,7 +71,7 @@ def test_extract_ai_safety_signal_positive() -> None:
 
 def test_extract_ai_safety_signal_negative() -> None:
     text, requires_emergency, category = extract_ai_safety_signal(
-        "Advice text.\nSAFETY_SIGNAL: {\"requiresEmergencyCare\": false, \"category\": \"none\"}"
+        'Advice text.\nSAFETY_SIGNAL: {"requiresEmergencyCare": false, "category": "none"}'
     )
     assert text == "Advice text."
     assert requires_emergency is False

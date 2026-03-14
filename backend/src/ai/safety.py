@@ -52,6 +52,9 @@ EMERGENCY_PATTERNS = {
         r"end\s+(my|their)\s+life",
         r"don'?t\s+want\s+to\s+live",
         r"self[- ]?harm",
+        r"better\s+off\s+dead",
+        r"nothing\s+(left\s+)?to\s+live\s+for",
+        r"cutting\s+(myself|themselves)",
     ],
     "poisoning": [
         r"overdose",
@@ -170,7 +173,9 @@ def extract_ai_safety_signal(response_text: str) -> tuple[str, bool, str | None]
     category: str | None = None
     try:
         parsed = json.loads(raw_json)
-        raw_requires = parsed.get("requiresEmergencyCare", parsed.get("requires_emergency_care", False))
+        raw_requires = parsed.get(
+            "requiresEmergencyCare", parsed.get("requires_emergency_care", False)
+        )
         raw_category = parsed.get("category", parsed.get("emergencyCategory", "none"))
 
         requires_emergency = bool(raw_requires)
@@ -185,7 +190,9 @@ def extract_ai_safety_signal(response_text: str) -> tuple[str, bool, str | None]
         requires_emergency = False
         category = None
 
-    cleaned = f"{response_text[:signal_match.start()]}{response_text[signal_match.end():]}".strip()
+    cleaned = (
+        f"{response_text[: signal_match.start()]}{response_text[signal_match.end() :]}".strip()
+    )
     return cleaned, requires_emergency, category
 
 

@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     ai_temperature: float = 0.3
     ai_provider: str = "anthropic"  # anthropic | openrouter
     openrouter_api_key: str = ""
-    openrouter_base_url: str = "https://openrouter.ai/api/v1/anthropic"
+    openrouter_base_url: str = "https://openrouter.ai/api"
     openrouter_site_url: str = ""
     openrouter_app_name: str = "MediCare AI"
 

@@ -49,22 +49,19 @@ def _sanitize_properties(properties: dict[str, Any]) -> dict[str, Any]:
     for key, value in properties.items():
         # Never persist large free-text fields to avoid PHI leakage.
         if any(
-            token in key.lower()
-            for token in ("content", "text", "question", "response", "digest")
+            token in key.lower() for token in ("content", "text", "question", "response", "digest")
         ):
             continue
 
         if isinstance(value, (str, int, float, bool)) or value is None:
             sanitized[key] = value
         elif isinstance(value, list):
-            sanitized[key] = [
-                item for item in value if isinstance(item, (str, int, float, bool))
-            ][:20]
+            sanitized[key] = [item for item in value if isinstance(item, (str, int, float, bool))][
+                :20
+            ]
         elif isinstance(value, dict):
             sanitized[key] = {
-                k: v
-                for k, v in value.items()
-                if isinstance(v, (str, int, float, bool))
+                k: v for k, v in value.items() if isinstance(v, (str, int, float, bool))
             }
 
     return sanitized
