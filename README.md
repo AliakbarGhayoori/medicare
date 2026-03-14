@@ -34,38 +34,38 @@ This is **not** a licensed clinician, medical device, or FDA-regulated product. 
 ### Source of Truth
 | # | Document | Purpose |
 |---|----------|---------|
-| 00 | [Baseline v3.0](./00_BASELINE.md) | Canonical decisions — resolves all conflicts |
+| 00 | [Baseline v3.0](./docs/notes/00_BASELINE.md) | Canonical decisions — resolves all conflicts |
 
 ### Product
 | # | Document | Purpose |
 |---|----------|---------|
-| 01 | [Executive Summary](./01_EXECUTIVE_SUMMARY.md) | Vision, market context, success metrics |
-| 02 | [Product Requirements](./02_PRODUCT_REQUIREMENTS.md) | User stories, acceptance criteria, feature specs |
-| 03 | [UX Design System](./03_UX_DESIGN_SYSTEM.md) | Colors, typography, components, accessibility |
+| 01 | [Executive Summary](./docs/notes/01_EXECUTIVE_SUMMARY.md) | Vision, market context, success metrics |
+| 02 | [Product Requirements](./docs/notes/02_PRODUCT_REQUIREMENTS.md) | User stories, acceptance criteria, feature specs |
+| 03 | [UX Design System](./docs/notes/03_UX_DESIGN_SYSTEM.md) | Colors, typography, components, accessibility |
 
 ### Engineering
 | # | Document | Purpose |
 |---|----------|---------|
-| 05 | [Architecture](./05_ARCHITECTURE.md) | System design, runtime flow, streaming, error handling |
-| 06 | [Database Schema](./06_DATABASE_SCHEMA.md) | Collections, indexes, migrations, retention |
-| 07 | [API Specifications](./07_API_SPECIFICATIONS.md) | Every endpoint with contracts, errors, examples |
+| 05 | [Architecture](./docs/notes/05_ARCHITECTURE.md) | System design, runtime flow, streaming, error handling |
+| 06 | [Database Schema](./docs/notes/06_DATABASE_SCHEMA.md) | Collections, indexes, migrations, retention |
+| 07 | [API Specifications](./docs/notes/07_API_SPECIFICATIONS.md) | Every endpoint with contracts, errors, examples |
 
 ### AI & Safety
 | # | Document | Purpose |
 |---|----------|---------|
-| 08 | [AI Prompts & Workflows](./08_AI_PROMPTS_AND_WORKFLOWS.md) | System prompts, citation logic, V10 update algorithm |
-| 09 | [Safety & Compliance](./09_SAFETY_AND_COMPLIANCE.md) | Medical disclaimers, emergency detection, privacy |
+| 08 | [AI Prompts & Workflows](./docs/notes/08_AI_PROMPTS_AND_WORKFLOWS.md) | System prompts, citation logic, V10 update algorithm |
+| 09 | [Safety & Compliance](./docs/notes/09_SAFETY_AND_COMPLIANCE.md) | Medical disclaimers, emergency detection, privacy |
 
 ### Delivery
 | # | Document | Purpose |
 |---|----------|---------|
-| 10 | [Phase 1 MVP](./10_PHASE1_MVP.md) | Week-by-week plan, deliverables, acceptance gates |
-| 20 | [Deployment & Testing](./20_DEPLOYMENT_AND_TESTING.md) | Environments, CI/CD, test strategy, monitoring |
+| 10 | [Phase 1 MVP](./docs/notes/10_PHASE1_MVP.md) | Week-by-week plan, deliverables, acceptance gates |
+| 20 | [Deployment & Testing](./docs/notes/20_DEPLOYMENT_AND_TESTING.md) | Environments, CI/CD, test strategy, monitoring |
 
 ### Historical
 | # | Document | Purpose |
 |---|----------|---------|
-| — | [Python Migration Note](./PYTHON_UPDATE.md) | Why we moved from Node/Express to Python (historical only) |
+| — | [Python Migration Note](./docs/notes/PYTHON_UPDATE.md) | Why we moved from Node/Express to Python (historical only) |
 
 ---
 
@@ -129,7 +129,7 @@ medicare/
 **Build:** Auth, chat with citations, V10 memory, settings, emergency detection.
 **Skip:** Voice, uploads, caregivers, HealthKit, multi-agent orchestration.
 
-See [Phase 1 MVP](./10_PHASE1_MVP.md) for the detailed week-by-week plan.
+See [Phase 1 MVP](./docs/notes/10_PHASE1_MVP.md) for the detailed week-by-week plan.
 
 ---
 
