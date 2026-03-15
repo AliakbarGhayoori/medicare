@@ -79,14 +79,15 @@ schemes:
     run:
       config: Debug
       environmentVariables:
-        API_BASE_URL: http://localhost:8000
+        API_BASE_URL: http://127.0.0.1:8000
         AUTH_MODE: mock
+        API_MODE: mock
     test:
       config: Debug
       environmentVariables:
         AUTH_MODE: mock
         API_MODE: mock
-        API_BASE_URL: http://localhost:8000
+        API_BASE_URL: http://127.0.0.1:8000
       targets:
         - MediCareAITests
         - MediCareAIUITests
@@ -100,7 +101,7 @@ schemes:
     run:
       config: Debug
       environmentVariables:
-        API_BASE_URL: http://localhost:8000
+        API_BASE_URL: http://127.0.0.1:8000
         AUTH_MODE: firebase
         API_MODE: live
     test:

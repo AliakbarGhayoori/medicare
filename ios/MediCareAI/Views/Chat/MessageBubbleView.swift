@@ -8,9 +8,10 @@ struct MessageBubbleView: View {
         VStack(alignment: message.role == .user ? .trailing : .leading, spacing: 7) {
             senderRow
 
-            Text(message.content)
+            Text(.init(message.content))
                 .font(.callout)
                 .foregroundStyle(message.role == .user ? Color.white : Color.mcTextPrimary)
+                .tint(message.role == .user ? Color.white.opacity(0.9) : Color.mcAccent)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 12)
                 .background(
@@ -83,9 +84,10 @@ struct MessageBubbleView: View {
             .foregroundStyle(Color.mcTextSecondary)
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            Text(text)
+            Text(.init(text))
                 .font(.callout)
                 .foregroundStyle(Color.mcTextPrimary)
+                .tint(Color.mcAccent)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 12)
                 .background(

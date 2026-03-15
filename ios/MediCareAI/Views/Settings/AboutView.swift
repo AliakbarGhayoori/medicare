@@ -57,6 +57,19 @@ struct AboutView: View {
                     Text("Your health data is used to personalize your experience. We do not sell your data or share it with third parties for advertising.")
                         .font(.body)
                         .foregroundStyle(Color.mcTextSecondary)
+
+                    Link(destination: URL(string: "https://medicareai.app/privacy")!) {
+                        Label("Privacy Policy", systemImage: "hand.raised.fill")
+                            .font(.callout.weight(.medium))
+                    }
+                    .tint(Color.mcAccent)
+                    .padding(.top, 4)
+
+                    Link(destination: URL(string: "https://medicareai.app/terms")!) {
+                        Label("Terms of Service", systemImage: "doc.text.fill")
+                            .font(.callout.weight(.medium))
+                    }
+                    .tint(Color.mcAccent)
                 }
                 .padding(16)
                 .background(

@@ -26,7 +26,7 @@ class Settings(BaseSettings):
 
     # Anthropic
     anthropic_api_key: str = ""
-    anthropic_model: str = "claude-opus-4-6-20250219"
+    anthropic_model: str = "google/gemini-3.1-pro-preview"
     anthropic_max_tokens: int = 4096
     ai_temperature: float = 0.3
     ai_provider: str = "anthropic"  # anthropic | openrouter

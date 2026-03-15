@@ -128,9 +128,13 @@ final class SSEClient {
             return false
 
         case "tool_use":
-            struct ToolPayload: Codable { let tool: String; let status: String }
+            struct ToolPayload: Codable {
+                let tool: String
+                let status: String
+                let query: String?
+            }
             if let payload = try? CodingSupport.decoder.decode(ToolPayload.self, from: payloadData) {
-                continuation.yield(.searching(tool: payload.tool))
+                continuation.yield(.searching(tool: payload.tool, query: payload.query))
             }
             return false
 

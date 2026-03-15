@@ -8,6 +8,7 @@ final class ChatViewModel: ObservableObject {
     @Published var isStreaming = false
     @Published var isSearching = false
     @Published var searchingTool: String?
+    @Published var searchingQuery: String?
     @Published var errorMessage: String?
     @Published var selectedCitation: Citation?
     @Published var currentConversationId: String?
@@ -30,6 +31,7 @@ final class ChatViewModel: ObservableObject {
         errorMessage = nil
         lastFailedQuestion = nil
         searchingTool = nil
+        searchingQuery = nil
         profileUpdatedNotice = nil
     }
 
@@ -59,6 +61,7 @@ final class ChatViewModel: ObservableObject {
         errorMessage = nil
         lastFailedQuestion = nil
         searchingTool = nil
+        searchingQuery = nil
         profileUpdatedNotice = nil
     }
 
@@ -80,6 +83,7 @@ final class ChatViewModel: ObservableObject {
         isStreaming = true
         isSearching = false
         searchingTool = nil
+        searchingQuery = nil
         streamingText = ""
         errorMessage = nil
         lastFailedQuestion = nil
@@ -100,11 +104,13 @@ final class ChatViewModel: ObservableObject {
                 case .token(let text):
                     isSearching = false
                     searchingTool = nil
+                    searchingQuery = nil
                     streamingText += text
 
-                case .searching(let tool):
+                case .searching(let tool, let query):
                     isSearching = true
                     searchingTool = tool
+                    searchingQuery = query
 
                 case .done(let payload):
                     currentConversationId = payload.conversationId
@@ -123,6 +129,7 @@ final class ChatViewModel: ObservableObject {
                     isStreaming = false
                     isSearching = false
                     searchingTool = nil
+                    searchingQuery = nil
                     analytics.track(
                         "response_received",
                         properties: [
@@ -137,6 +144,7 @@ final class ChatViewModel: ObservableObject {
                     isStreaming = false
                     isSearching = false
                     searchingTool = nil
+                    searchingQuery = nil
                     streamingText = ""
                     errorMessage = apiError.errorDescription
                     lastFailedQuestion = trimmed
@@ -147,6 +155,7 @@ final class ChatViewModel: ObservableObject {
             isStreaming = false
             isSearching = false
             searchingTool = nil
+            searchingQuery = nil
             streamingText = ""
             errorMessage = ErrorHandling.message(for: error)
             lastFailedQuestion = trimmed

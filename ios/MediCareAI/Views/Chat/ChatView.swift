@@ -8,6 +8,7 @@ struct ChatView: View {
     var initialMessage: String?
 
     @State private var draft = ""
+    @State private var isNearBottom = true
 
     var body: some View {
         ZStack {
@@ -55,6 +56,12 @@ struct ChatView: View {
                                     .padding(.top, 10)
                                     .id("typing")
                             }
+
+                            // Invisible anchor at the bottom to detect scroll position
+                            Color.clear.frame(height: 1)
+                                .id("bottom")
+                                .onAppear { isNearBottom = true }
+                                .onDisappear { isNearBottom = false }
                         }
                         .padding(.horizontal, 16)
                         .padding(.top, 12)
@@ -62,12 +69,14 @@ struct ChatView: View {
                     }
                     .scrollDismissesKeyboard(.interactively)
                     .onChange(of: chatViewModel.messages.count) {
-                        if let last = chatViewModel.messages.last {
+                        if isNearBottom, let last = chatViewModel.messages.last {
                             scroll(proxy: proxy, to: last.id)
                         }
                     }
                     .onChange(of: chatViewModel.streamingText) {
-                        scroll(proxy: proxy, to: "streaming")
+                        if isNearBottom {
+                            scroll(proxy: proxy, to: "streaming")
+                        }
                     }
                 }
 
@@ -286,8 +295,8 @@ struct ChatView: View {
     }
 
     private var searchingText: String {
-        if let tool = chatViewModel.searchingTool, !tool.isEmpty {
-            return "Tool in use: \(tool)"
+        if let query = chatViewModel.searchingQuery, !query.isEmpty {
+            return "Looking up: \(query)"
         }
         return "Checking trusted medical sources..."
     }

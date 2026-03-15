@@ -1,29 +1,26 @@
 from __future__ import annotations
 
-from anthropic import AsyncAnthropic
+from openai import AsyncOpenAI
 
 from src.config import get_settings
 
-_client: AsyncAnthropic | None = None
+_client: AsyncOpenAI | None = None
 
 
-def get_anthropic_client() -> AsyncAnthropic:
+def get_openai_client() -> AsyncOpenAI:
     global _client
     if _client is None:
         settings = get_settings()
-        if settings.ai_provider == "openrouter":
-            api_key = settings.openrouter_api_key or settings.anthropic_api_key
-            headers: dict[str, str] = {}
-            if settings.openrouter_site_url:
-                headers["HTTP-Referer"] = settings.openrouter_site_url
-            if settings.openrouter_app_name:
-                headers["X-Title"] = settings.openrouter_app_name
+        api_key = settings.openrouter_api_key or settings.anthropic_api_key
+        default_headers: dict[str, str] = {}
+        if settings.openrouter_site_url:
+            default_headers["HTTP-Referer"] = settings.openrouter_site_url
+        if settings.openrouter_app_name:
+            default_headers["X-Title"] = settings.openrouter_app_name
 
-            _client = AsyncAnthropic(
-                api_key=api_key,
-                base_url=settings.openrouter_base_url,
-                default_headers=headers or None,
-            )
-        else:
-            _client = AsyncAnthropic(api_key=settings.anthropic_api_key)
+        _client = AsyncOpenAI(
+            api_key=api_key,
+            base_url=f"{settings.openrouter_base_url}/v1",
+            default_headers=default_headers or None,
+        )
     return _client

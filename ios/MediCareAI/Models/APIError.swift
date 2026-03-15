@@ -56,9 +56,9 @@ enum APIError: LocalizedError {
             return "We could not find what you were looking for."
         case .rateLimited(let retryAfter):
             if let retryAfter {
-                return "You are sending requests too quickly. Please wait \(retryAfter) seconds."
+                return "You're sending too many requests. Please wait \(retryAfter) seconds."
             }
-            return "You are sending requests too quickly. Please wait a moment."
+            return "You're sending too many requests. Please wait a moment."
         case .aiError, .aiTimeout:
             return "I could not generate a response right now. Please try again."
         case .serverError:

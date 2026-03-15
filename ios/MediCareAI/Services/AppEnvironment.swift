@@ -19,7 +19,7 @@ struct AppEnvironment {
         }
 
         return AppEnvironment(
-            apiBaseURL: URL(string: "http://localhost:8000")!,
+            apiBaseURL: URL(string: "http://127.0.0.1:8000")!,
             useMockAuth: useMockAuth,
             useMockAPI: useMockAPI
         )

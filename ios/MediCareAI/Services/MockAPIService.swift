@@ -8,7 +8,7 @@ final class MockAPIService: APIServicing {
 
         return AsyncThrowingStream { continuation in
             Task {
-                continuation.yield(.searching(tool: "web_search"))
+                continuation.yield(.searching(tool: "web_search", query: "medical information"))
                 for chunk in result.tokenChunks {
                     continuation.yield(.token(chunk))
                 }

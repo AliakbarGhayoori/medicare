@@ -2,7 +2,7 @@ import Foundation
 
 enum ChatStreamEvent {
     case token(String)
-    case searching(tool: String)
+    case searching(tool: String, query: String?)
     case done(ChatDonePayload)
     case error(APIError)
 }

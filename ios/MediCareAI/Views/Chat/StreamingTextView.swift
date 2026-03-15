@@ -15,15 +15,17 @@ struct StreamingTextView: View {
             }
             .foregroundStyle(Color.mcTextSecondary)
 
-            (
-                Text(text)
+            VStack(alignment: .leading, spacing: 0) {
+                Text(.init(text))
                     .font(.callout)
                     .foregroundStyle(Color.mcTextPrimary)
-                +
-                Text(showCursor ? "▍" : "")
-                    .font(.callout.bold())
-                    .foregroundStyle(Color.mcAccent)
-            )
+                    .tint(Color.mcAccent)
+                if showCursor {
+                    Text("▍")
+                        .font(.callout.bold())
+                        .foregroundStyle(Color.mcAccent)
+                }
+            }
             .frame(maxWidth: UIScreen.main.bounds.width * 0.82, alignment: .leading)
             .padding(.horizontal, 14)
             .padding(.vertical, 12)

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from types import SimpleNamespace
 
 import pytest
@@ -15,24 +16,56 @@ class _FakeAPIError(Exception):
         self.response = SimpleNamespace(status_code=status_code, headers=headers or {})
 
 
-def _tool_use_response(query: str, tool_use_id: str = "toolu_1") -> SimpleNamespace:
-    return SimpleNamespace(
-        content=[
-            SimpleNamespace(
-                type="tool_use",
-                id=tool_use_id,
-                name="tavily_search",
-                input={"query": query},
-            )
-        ]
+def _tool_use_response(query: str, tool_use_id: str = "call_1") -> SimpleNamespace:
+    """Fake an OpenAI chat completion with a tool call."""
+    tool_call = SimpleNamespace(
+        id=tool_use_id,
+        type="function",
+        function=SimpleNamespace(
+            name="tavily_search",
+            arguments=json.dumps({"query": query}),
+        ),
     )
+    message = SimpleNamespace(
+        role="assistant",
+        content=None,
+        tool_calls=[tool_call],
+    )
+    message.model_dump = lambda: {
+        "role": "assistant",
+        "content": None,
+        "tool_calls": [
+            {
+                "id": tool_use_id,
+                "type": "function",
+                "function": {
+                    "name": "tavily_search",
+                    "arguments": json.dumps({"query": query}),
+                },
+            }
+        ],
+    }
+    choice = SimpleNamespace(message=message, finish_reason="tool_calls", index=0)
+    return SimpleNamespace(choices=[choice])
 
 
 def _text_response(text: str) -> SimpleNamespace:
-    return SimpleNamespace(content=[SimpleNamespace(type="text", text=text)])
+    """Fake an OpenAI chat completion with a text response."""
+    message = SimpleNamespace(
+        role="assistant",
+        content=text,
+        tool_calls=None,
+    )
+    message.model_dump = lambda: {
+        "role": "assistant",
+        "content": text,
+        "tool_calls": None,
+    }
+    choice = SimpleNamespace(message=message, finish_reason="stop", index=0)
+    return SimpleNamespace(choices=[choice])
 
 
-class _FakeMessages:
+class _FakeCompletions:
     def __init__(self, create_responses: list[object]) -> None:
         self._create_responses = list(create_responses)
         self.create_calls = 0
@@ -49,18 +82,23 @@ class _FakeMessages:
         return next_response
 
 
+class _FakeChat:
+    def __init__(self, completions: _FakeCompletions) -> None:
+        self.completions = completions
+
+
 class _FakeClient:
-    def __init__(self, messages: _FakeMessages) -> None:
-        self.messages = messages
+    def __init__(self, completions: _FakeCompletions) -> None:
+        self.chat = _FakeChat(completions)
 
 
 @pytest.fixture
 def ai_settings():
     return SimpleNamespace(
         mock_ai=False,
-        ai_provider="anthropic",
-        openrouter_api_key="",
-        anthropic_api_key="test-key",
+        ai_provider="openrouter",
+        openrouter_api_key="test-key",
+        anthropic_api_key="",
         anthropic_model="test-model",
         anthropic_max_tokens=256,
         ai_temperature=0.1,
@@ -84,7 +122,7 @@ async def _collect_events() -> list[dict]:
 
 
 async def test_model_can_make_tool_calls_and_then_return_text(monkeypatch, ai_settings):
-    fake_messages = _FakeMessages(
+    fake_completions = _FakeCompletions(
         create_responses=[
             _tool_use_response("dizziness older adults causes red flags"),
             _text_response(
@@ -92,7 +130,7 @@ async def test_model_can_make_tool_calls_and_then_return_text(monkeypatch, ai_se
             ),
         ]
     )
-    fake_client = _FakeClient(fake_messages)
+    fake_client = _FakeClient(fake_completions)
     tool_queries: list[str] = []
 
     async def _fake_tavily_search(**kwargs):  # noqa: ANN003
@@ -113,7 +151,7 @@ async def test_model_can_make_tool_calls_and_then_return_text(monkeypatch, ai_se
         }
 
     monkeypatch.setattr(stream_runtime, "get_settings", lambda: ai_settings)
-    monkeypatch.setattr(stream_runtime, "get_anthropic_client", lambda: fake_client)
+    monkeypatch.setattr(stream_runtime, "get_openai_client", lambda: fake_client)
     monkeypatch.setattr(stream_runtime, "execute_tavily_search", _fake_tavily_search)
 
     events = await _collect_events()
@@ -122,63 +160,52 @@ async def test_model_can_make_tool_calls_and_then_return_text(monkeypatch, ai_se
     assert any(event.get("type") == "tool_use" for event in events)
     assert tool_queries == ["dizziness older adults causes red flags"]
     assert "Final answer with evidence" in token_text
-    assert fake_messages.create_calls == 2
+    assert fake_completions.create_calls == 2
 
-    second_request = fake_messages.create_requests[1]
-    tool_result = second_request["messages"][-1]["content"][0]
-    assert tool_result["type"] == "tool_result"
+    second_request = fake_completions.create_requests[1]
+    tool_msg = second_request["messages"][-1]
+    assert tool_msg["role"] == "tool"
 
 
-async def test_min_tool_calls_enforced_before_final_answer(monkeypatch, ai_settings):
-    ai_settings.ai_tool_min_calls = 2
-    fake_messages = _FakeMessages(
+async def test_model_responds_without_tool_calls(monkeypatch, ai_settings):
+    """Model can respond directly without searching (e.g. greetings)."""
+    fake_completions = _FakeCompletions(
         create_responses=[
-            _text_response("Premature answer"),
-            _tool_use_response("query one", tool_use_id="toolu_1"),
-            _tool_use_response("query two", tool_use_id="toolu_2"),
-            _text_response("Final answer after enough evidence."),
+            _text_response("Hello! How can I help you today?"),
         ]
     )
-    fake_client = _FakeClient(fake_messages)
-    tool_queries: list[str] = []
-
-    async def _fake_tavily_search(**kwargs):  # noqa: ANN003
-        tool_queries.append(kwargs["query"])
-        return {"query": kwargs["query"], "answer": "", "results": []}
+    fake_client = _FakeClient(fake_completions)
 
     monkeypatch.setattr(stream_runtime, "get_settings", lambda: ai_settings)
-    monkeypatch.setattr(stream_runtime, "get_anthropic_client", lambda: fake_client)
-    monkeypatch.setattr(stream_runtime, "execute_tavily_search", _fake_tavily_search)
+    monkeypatch.setattr(stream_runtime, "get_openai_client", lambda: fake_client)
 
     events = await _collect_events()
     token_text = "".join(event.get("text", "") for event in events if event.get("type") == "token")
 
-    assert tool_queries == ["query one", "query two"]
-    assert "Final answer after enough evidence." in token_text
+    assert "Hello" in token_text
 
 
 async def test_create_retries_on_retryable_server_errors(monkeypatch, ai_settings):
-    ai_settings.ai_tool_min_calls = 0
-    fake_messages = _FakeMessages(
+    fake_completions = _FakeCompletions(
         create_responses=[
             _FakeAPIError(status_code=503),
             _text_response("Recovered response."),
         ]
     )
-    fake_client = _FakeClient(fake_messages)
+    fake_client = _FakeClient(fake_completions)
 
     async def _no_sleep(_: float) -> None:
         return None
 
     monkeypatch.setattr(stream_runtime, "get_settings", lambda: ai_settings)
-    monkeypatch.setattr(stream_runtime, "get_anthropic_client", lambda: fake_client)
+    monkeypatch.setattr(stream_runtime, "get_openai_client", lambda: fake_client)
     monkeypatch.setattr(stream_runtime.asyncio, "sleep", _no_sleep)
 
     events = await _collect_events()
     token_text = "".join(event.get("text", "") for event in events if event.get("type") == "token")
 
     assert "Recovered response." in token_text
-    assert fake_messages.create_calls == 2
+    assert fake_completions.create_calls == 2
 
 
 async def test_create_rate_limit_maps_retry_after_header(monkeypatch, ai_settings):
@@ -187,12 +214,12 @@ async def test_create_rate_limit_maps_retry_after_header(monkeypatch, ai_setting
             super().__init__("429")
             self.response = SimpleNamespace(status_code=429, headers={"Retry-After": "17"})
 
-    fake_messages = _FakeMessages(create_responses=[_FakeRateLimitError()])
-    fake_client = _FakeClient(fake_messages)
+    fake_completions = _FakeCompletions(create_responses=[_FakeRateLimitError()])
+    fake_client = _FakeClient(fake_completions)
 
     monkeypatch.setattr(stream_runtime, "get_settings", lambda: ai_settings)
-    monkeypatch.setattr(stream_runtime, "get_anthropic_client", lambda: fake_client)
-    monkeypatch.setattr(stream_runtime.anthropic, "RateLimitError", _FakeRateLimitError)
+    monkeypatch.setattr(stream_runtime, "get_openai_client", lambda: fake_client)
+    monkeypatch.setattr(stream_runtime.openai, "RateLimitError", _FakeRateLimitError)
 
     with pytest.raises(APIError) as exc_info:
         await _collect_events()
@@ -203,19 +230,19 @@ async def test_create_rate_limit_maps_retry_after_header(monkeypatch, ai_setting
 
 async def test_fails_when_model_exceeds_tool_call_limit(monkeypatch, ai_settings):
     ai_settings.ai_tool_max_calls = 1
-    fake_messages = _FakeMessages(
+    fake_completions = _FakeCompletions(
         create_responses=[
-            _tool_use_response("first query", tool_use_id="toolu_1"),
-            _tool_use_response("second query", tool_use_id="toolu_2"),
+            _tool_use_response("first query", tool_use_id="call_1"),
+            _tool_use_response("second query", tool_use_id="call_2"),
         ]
     )
-    fake_client = _FakeClient(fake_messages)
+    fake_client = _FakeClient(fake_completions)
 
     async def _fake_tavily_search(**kwargs):  # noqa: ANN003
         return {"query": kwargs["query"], "answer": "", "results": []}
 
     monkeypatch.setattr(stream_runtime, "get_settings", lambda: ai_settings)
-    monkeypatch.setattr(stream_runtime, "get_anthropic_client", lambda: fake_client)
+    monkeypatch.setattr(stream_runtime, "get_openai_client", lambda: fake_client)
     monkeypatch.setattr(stream_runtime, "execute_tavily_search", _fake_tavily_search)
 
     with pytest.raises(APIError) as exc_info:
@@ -225,26 +252,25 @@ async def test_fails_when_model_exceeds_tool_call_limit(monkeypatch, ai_settings
 
 
 async def test_openrouter_key_enables_live_path(monkeypatch, ai_settings):
-    ai_settings.ai_provider = "openrouter"
     ai_settings.openrouter_api_key = "or-live-key"
     ai_settings.anthropic_api_key = ""
-    ai_settings.ai_tool_min_calls = 0
 
-    fake_messages = _FakeMessages(create_responses=[_text_response("Live OpenRouter response.")])
-    fake_client = _FakeClient(fake_messages)
+    fake_completions = _FakeCompletions(
+        create_responses=[_text_response("Live OpenRouter response.")]
+    )
+    fake_client = _FakeClient(fake_completions)
 
     monkeypatch.setattr(stream_runtime, "get_settings", lambda: ai_settings)
-    monkeypatch.setattr(stream_runtime, "get_anthropic_client", lambda: fake_client)
+    monkeypatch.setattr(stream_runtime, "get_openai_client", lambda: fake_client)
 
     events = await _collect_events()
     token_text = "".join(event.get("text", "") for event in events if event.get("type") == "token")
 
     assert "Live OpenRouter response." in token_text
-    assert fake_messages.create_calls == 1
+    assert fake_completions.create_calls == 1
 
 
 async def test_openrouter_without_keys_falls_back_to_mock(monkeypatch, ai_settings):
-    ai_settings.ai_provider = "openrouter"
     ai_settings.openrouter_api_key = ""
     ai_settings.anthropic_api_key = ""
 

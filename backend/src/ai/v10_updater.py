@@ -2,11 +2,10 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Any, cast
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from src.ai.client import get_anthropic_client
+from src.ai.client import get_openai_client
 from src.ai.prompts import V10_UPDATE_SYSTEM_PROMPT, V10_UPDATE_USER_TEMPLATE
 from src.config import get_settings
 from src.services.profile_service import get_v10_digest, upsert_v10_digest
@@ -24,16 +23,6 @@ def should_update_v10(user_question: str) -> bool:
     return not any(re.match(pattern, question) for pattern in _NON_MEDICAL_PATTERNS)
 
 
-def _extract_response_text(response: object) -> str:
-    content_blocks = getattr(response, "content", []) or []
-    parts: list[str] = []
-    for block in content_blocks:
-        text = getattr(block, "text", None)
-        if isinstance(text, str):
-            parts.append(text)
-    return "".join(parts).strip()
-
-
 def _heuristic_digest_update(current_digest: str, user_question: str) -> str:
     now_label = utcnow().strftime("%Y-%m-%d")
 
@@ -47,14 +36,9 @@ def _heuristic_digest_update(current_digest: str, user_question: str) -> str:
 
 def _can_use_ai_update() -> bool:
     settings = get_settings()
-
     if settings.mock_ai:
         return False
-
-    if settings.ai_provider == "openrouter":
-        return bool(settings.openrouter_api_key or settings.anthropic_api_key)
-
-    return bool(settings.anthropic_api_key)
+    return bool(settings.openrouter_api_key or settings.anthropic_api_key)
 
 
 async def _update_digest_with_ai(
@@ -63,7 +47,7 @@ async def _update_digest_with_ai(
     assistant_response: str,
 ) -> str:
     settings = get_settings()
-    client = get_anthropic_client()
+    client = get_openai_client()
 
     prompt = V10_UPDATE_USER_TEMPLATE.format(
         current_digest=current_digest or "(No health profile set up yet)",
@@ -71,15 +55,18 @@ async def _update_digest_with_ai(
         assistant_response=assistant_response[:1200],
     )
 
-    response = await client.messages.create(
+    response = await client.chat.completions.create(
         model=settings.anthropic_model,
         max_tokens=600,
         temperature=0.1,
-        system=V10_UPDATE_SYSTEM_PROMPT,
-        messages=cast(Any, [{"role": "user", "content": prompt}]),
+        messages=[
+            {"role": "system", "content": V10_UPDATE_SYSTEM_PROMPT},
+            {"role": "user", "content": prompt},
+        ],
     )
 
-    return _extract_response_text(response)[:5000]
+    text = response.choices[0].message.content or ""
+    return text.strip()[:5000]
 
 
 async def update_v10_after_conversation(
@@ -107,7 +94,10 @@ async def update_v10_after_conversation(
                 assistant_response=assistant_response,
             )
         except Exception:
-            logger.warning("V10 AI update failed, falling back to heuristic", exc_info=True)
+            logger.warning(
+                "V10 AI update failed, falling back to heuristic",
+                exc_info=True,
+            )
             next_digest = ""
 
     if not next_digest:
