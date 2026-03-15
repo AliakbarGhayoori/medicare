@@ -2,7 +2,7 @@
 
 **A trusted, citation-backed medical assistant for elderly users.**
 
-Native iOS app + Python FastAPI backend, powered by a single Opus-class AI model with real-time web evidence retrieval.
+Native iOS app + Python FastAPI backend, powered by Gemini 3.1 Pro via OpenRouter with real-time Tavily web evidence retrieval.
 
 ---
 
@@ -20,52 +20,12 @@ This is **not** a licensed clinician, medical device, or FDA-regulated product. 
 |-------|-----------|
 | iOS Client | SwiftUI (iOS 17+), MVVM, Firebase Auth SDK |
 | Backend API | Python 3.12+, FastAPI, Motor (async MongoDB), Firebase Admin SDK |
-| Database | MongoDB (Atlas in production, Docker locally) |
-| AI Model | Claude Opus 4.6 via Anthropic API, single-model path with tool use |
+| Database | MongoDB 7 (Docker local, Atlas or Docker for prod) |
+| AI Model | Gemini 3.1 Pro via OpenRouter (OpenAI Chat Completions format) |
 | AI Tools | Tavily search via model function-calling for real-time medical evidence |
 | Streaming | Server-Sent Events (SSE) for real-time response delivery |
 | Auth | Firebase Authentication (email/password) |
-| Deployment | Docker Compose (dev), managed containers (prod) |
-
----
-
-## Document Index
-
-### Source of Truth
-| # | Document | Purpose |
-|---|----------|---------|
-| 00 | [Baseline v3.0](./docs/notes/00_BASELINE.md) | Canonical decisions — resolves all conflicts |
-
-### Product
-| # | Document | Purpose |
-|---|----------|---------|
-| 01 | [Executive Summary](./docs/notes/01_EXECUTIVE_SUMMARY.md) | Vision, market context, success metrics |
-| 02 | [Product Requirements](./docs/notes/02_PRODUCT_REQUIREMENTS.md) | User stories, acceptance criteria, feature specs |
-| 03 | [UX Design System](./docs/notes/03_UX_DESIGN_SYSTEM.md) | Colors, typography, components, accessibility |
-
-### Engineering
-| # | Document | Purpose |
-|---|----------|---------|
-| 05 | [Architecture](./docs/notes/05_ARCHITECTURE.md) | System design, runtime flow, streaming, error handling |
-| 06 | [Database Schema](./docs/notes/06_DATABASE_SCHEMA.md) | Collections, indexes, migrations, retention |
-| 07 | [API Specifications](./docs/notes/07_API_SPECIFICATIONS.md) | Every endpoint with contracts, errors, examples |
-
-### AI & Safety
-| # | Document | Purpose |
-|---|----------|---------|
-| 08 | [AI Prompts & Workflows](./docs/notes/08_AI_PROMPTS_AND_WORKFLOWS.md) | System prompts, citation logic, V10 update algorithm |
-| 09 | [Safety & Compliance](./docs/notes/09_SAFETY_AND_COMPLIANCE.md) | Medical disclaimers, emergency detection, privacy |
-
-### Delivery
-| # | Document | Purpose |
-|---|----------|---------|
-| 10 | [Phase 1 MVP](./docs/notes/10_PHASE1_MVP.md) | Week-by-week plan, deliverables, acceptance gates |
-| 20 | [Deployment & Testing](./docs/notes/20_DEPLOYMENT_AND_TESTING.md) | Environments, CI/CD, test strategy, monitoring |
-
-### Historical
-| # | Document | Purpose |
-|---|----------|---------|
-| — | [Python Migration Note](./docs/notes/PYTHON_UPDATE.md) | Why we moved from Node/Express to Python (historical only) |
+| Deployment | Docker Compose + Caddy (auto-HTTPS) on single VPS |
 
 ---
 
@@ -76,11 +36,11 @@ This is **not** a licensed clinician, medical device, or FDA-regulated product. 
 git clone <repo-url> && cd medicare
 
 # 2. Backend
-cp .env.example .env  # fill in Firebase + Anthropic/OpenRouter + Tavily keys
+cp .env.example .env  # fill in Firebase + OpenRouter + Tavily keys
 docker compose up -d mongo
 cd backend && python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-uvicorn src.main:app --reload --port 8000
+uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
 
 # 3. iOS
 open ios/MediCareAI.xcodeproj
@@ -90,54 +50,74 @@ open ios/MediCareAI.xcodeproj
 
 ---
 
-## Project Structure (Target)
+## Production Deployment (Single Droplet)
+
+See **[DEPLOY.md](./DEPLOY.md)** for the full step-by-step guide to deploy on a single DigitalOcean/VPS droplet.
+
+**TL;DR:**
+```bash
+ssh root@your-droplet
+git clone <repo> /opt/medicare && cd /opt/medicare
+cp .env.example .env   # fill in real values
+DOMAIN=api.yourdomain.com docker compose up -d --build
+```
+
+---
+
+## Project Structure
 
 ```
 medicare/
 ├── README.md
-├── docs/                    # All documentation (this folder can hold docs)
+├── DEPLOY.md                    # Production deployment guide
+├── CLAUDE.md                    # AI coding assistant context
+├── docker-compose.yml           # Full stack: MongoDB + Backend + Caddy
+├── Caddyfile                    # Reverse proxy with auto-HTTPS
+├── .env.example                 # Environment template
+├── docs/notes/                  # Design docs (architecture, API spec, UX, safety)
 ├── backend/
 │   ├── src/
-│   │   ├── api/             # Route handlers
-│   │   ├── services/        # Business logic
-│   │   ├── ai/              # Model runtime, prompts, citation extraction
-│   │   ├── db/              # Mongo connection and helpers
-│   │   ├── dependencies/    # FastAPI dependencies (auth, context)
-│   │   ├── models/          # Pydantic models
-│   │   └── main.py          # App entry point
-│   ├── tests/
+│   │   ├── main.py              # FastAPI app, CORS, routers, lifespan
+│   │   ├── config.py            # Pydantic Settings (env vars)
+│   │   ├── api/                 # Route handlers (chat, profile, settings, account)
+│   │   ├── ai/                  # AI runtime (stream, prompts, citations, safety, tavily)
+│   │   ├── services/            # Business logic (chat, profile, settings, rate limiter)
+│   │   ├── dependencies/        # FastAPI deps (auth, database)
+│   │   └── models/              # Pydantic request/response models
+│   ├── tests/                   # pytest-asyncio tests
 │   ├── Dockerfile
 │   └── requirements.txt
 ├── ios/
+│   ├── project.yml              # XcodeGen spec
 │   ├── MediCareAI/
-│   │   ├── Views/           # SwiftUI views
-│   │   ├── ViewModels/      # ObservableObject VMs
-│   │   ├── Services/        # API client, Firebase auth
-│   │   ├── Models/          # Codable data models
-│   │   └── Resources/       # Assets, fonts, configs
+│   │   ├── Views/               # SwiftUI views
+│   │   ├── ViewModels/          # MVVM ViewModels
+│   │   ├── Services/            # API, Auth, SSE clients
+│   │   ├── Models/              # Codable DTOs
+│   │   └── Resources/           # Assets, GoogleService-Info.plist
 │   └── MediCareAI.xcodeproj
-├── docker-compose.yml
-├── .env.example
-└── .github/
-    └── workflows/           # CI/CD pipelines
 ```
 
 ---
 
-## Phase 1 Scope (6-8 Weeks)
+## How It Works
 
-**Build:** Auth, chat with citations, V10 memory, settings, emergency detection.
-**Skip:** Voice, uploads, caregivers, HealthKit, multi-agent orchestration.
-
-See [Phase 1 MVP](./docs/notes/10_PHASE1_MVP.md) for the detailed week-by-week plan.
+```
+iOS → Bearer token → FastAPI → Firebase verify_id_token()
+→ Load V10 digest + conversation history
+→ Build system prompt + user messages
+→ Stream Gemini 3.1 Pro via OpenRouter with tavily_search tool
+→ Extract citations, detect emergency
+→ Save to MongoDB, trigger async V10 update
+→ Stream SSE: tool_use → token → done
+```
 
 ---
 
-## Quality Bar
+## Tests
 
-This app targets **Apple-level quality**:
-- HIG-aligned, elderly-first UI with large text and high contrast
-- Every medical claim backed by a verifiable citation
-- Emergency symptoms detected and escalated immediately
-- Accessibility audit (Dynamic Type, VoiceOver, contrast ratios)
-- p95 response time under budget, 99.5%+ crash-free sessions
+```bash
+cd backend
+.venv/bin/python -m pytest tests/ -v                          # Unit tests (40+)
+MEDICARE_ENV_FILE=.env.live .venv/bin/python scripts/live_e2e_check.py  # E2E
+```
