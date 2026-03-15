@@ -28,15 +28,23 @@ targets:
         product: FirebaseCore
       - package: Firebase
         product: FirebaseAuth
+    info:
+      path: MediCareAI/Info.plist
+      properties:
+        CFBundleDisplayName: MediCare AI
+        UIApplicationSupportsIndirectInputEvents: true
+        UILaunchScreen: {}
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+          NSExceptionDomains:
+            "165.232.141.95":
+              NSExceptionAllowsInsecureHTTPLoads: true
+              NSIncludesSubdomains: false
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.medicareai.app
         SWIFT_VERSION: 5.9
         IPHONEOS_DEPLOYMENT_TARGET: 17.0
-        GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: MediCare AI
-        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
-        INFOPLIST_KEY_UILaunchScreen_Generation: YES
         CURRENT_PROJECT_VERSION: 1
         MARKETING_VERSION: 1.0.0
         TARGETED_DEVICE_FAMILY: 1
@@ -113,3 +121,14 @@ schemes:
       targets:
         - MediCareAITests
         - MediCareAIUITests
+
+  MediCareAI-Prod:
+    build:
+      targets:
+        MediCareAI: all
+    run:
+      config: Release
+      environmentVariables:
+        API_BASE_URL: http://165.232.141.95
+        AUTH_MODE: firebase
+        API_MODE: live
