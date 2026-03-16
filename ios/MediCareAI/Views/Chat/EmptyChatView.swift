@@ -6,9 +6,9 @@ struct EmptyChatView: View {
     let onSuggestionTap: (String) -> Void
 
     private let suggestions = [
-        "What are common side effects of metformin?",
-        "I have had headaches for 3 days. What could be causing them?",
-        "Is it safe to take ibuprofen with blood pressure medication?"
+        "I've been having headaches for a few days. What could be going on?",
+        "Can you check if my medications have any interactions?",
+        "What exercises would be good for someone with my health profile?"
     ]
 
     var body: some View {
@@ -31,7 +31,7 @@ struct EmptyChatView: View {
                     .foregroundStyle(Color.mcTextPrimary)
                     .multilineTextAlignment(.center)
 
-                Text("Ask any health question. I will check reliable sources and explain things clearly.")
+                Text("Tell me what's on your mind. I'll search trusted medical sources and give you a clear, honest answer.")
                     .font(.callout)
                     .foregroundStyle(Color.mcTextSecondary)
                     .multilineTextAlignment(.center)
@@ -51,9 +51,9 @@ struct EmptyChatView: View {
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
-                    capabilityChip(icon: "doc.text.magnifyingglass", text: "Checks trusted sources")
-                    capabilityChip(icon: "book.closed.fill", text: "Cites evidence")
-                    capabilityChip(icon: "cross.case.fill", text: "Flags emergencies")
+                    capabilityChip(icon: "doc.text.magnifyingglass", text: "Evidence-backed")
+                    capabilityChip(icon: "person.fill", text: "Personalized to you")
+                    capabilityChip(icon: "cross.case.fill", text: "Safety-aware")
                 }
             }
             .padding(.horizontal, 16)
@@ -99,9 +99,9 @@ struct EmptyChatView: View {
     private var greeting: String {
         if let email = authViewModel.state == .authenticated ? authViewModel.currentEmail : nil {
             let name = email.components(separatedBy: "@").first?.capitalized ?? "there"
-            return "Hi, \(name). What do you want to check today?"
+            return "Hi \(name), what can I help with?"
         }
-        return "Hi there. What do you want to check today?"
+        return "Hi there, what can I help with?"
     }
 
     @ViewBuilder

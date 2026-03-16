@@ -5,26 +5,41 @@ struct RootView: View {
     @EnvironmentObject private var authViewModel: AuthViewModel
     @EnvironmentObject private var settingsViewModel: SettingsViewModel
 
+    @State private var showSplash = true
+
     var body: some View {
-        Group {
-            switch authViewModel.state {
-            case .loading:
-                ProgressView("Getting things ready...")
-                    .font(.body)
+        ZStack {
+            Group {
+                switch authViewModel.state {
+                case .loading:
+                    ProgressView("Getting things ready...")
+                        .font(.body)
 
-            case .unauthenticated:
-                if context.hasCompletedOnboarding {
-                    LoginView()
-                } else {
-                    OnboardingView()
-                }
-
-            case .authenticated:
-                MainTabView()
-                    .task {
-                        await settingsViewModel.load()
-                        await settingsViewModel.acceptDisclaimerIfNeeded()
+                case .unauthenticated:
+                    if context.hasCompletedOnboarding {
+                        LoginView()
+                    } else {
+                        OnboardingView()
                     }
+
+                case .authenticated:
+                    MainTabView()
+                        .task {
+                            await settingsViewModel.load()
+                            await settingsViewModel.acceptDisclaimerIfNeeded()
+                        }
+                }
+            }
+            .opacity(showSplash ? 0 : 1)
+
+            if showSplash {
+                SplashView {
+                    withAnimation(.easeInOut(duration: 0.4)) {
+                        showSplash = false
+                    }
+                }
+                .transition(.opacity)
+                .zIndex(10)
             }
         }
         .dynamicTypeSize(dynamicTypeSize)
@@ -51,12 +66,12 @@ private struct MainTabView: View {
     var body: some View {
         TabView {
             NavigationStack {
-                ConversationListView()
+                HomeView()
             }
             .tabItem {
-                Label("Chat", systemImage: "message.fill")
+                Label("Home", systemImage: "house.fill")
             }
-            .accessibilityIdentifier("tab.chat")
+            .accessibilityIdentifier("tab.home")
 
             NavigationStack {
                 V10MemoryView()
