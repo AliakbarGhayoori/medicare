@@ -58,14 +58,14 @@ struct AboutView: View {
                         .font(.body)
                         .foregroundStyle(Color.mcTextSecondary)
 
-                    Link(destination: URL(string: "https://medicareai.app/privacy")!) {
+                    Link(destination: URL(string: "https://mediguide.co/privacy")!) {
                         Label("Privacy Policy", systemImage: "hand.raised.fill")
                             .font(.callout.weight(.medium))
                     }
                     .tint(Color.mcAccent)
                     .padding(.top, 4)
 
-                    Link(destination: URL(string: "https://medicareai.app/terms")!) {
+                    Link(destination: URL(string: "https://mediguide.co/terms")!) {
                         Label("Terms of Service", systemImage: "doc.text.fill")
                             .font(.callout.weight(.medium))
                     }

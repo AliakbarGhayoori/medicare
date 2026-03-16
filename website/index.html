@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediCare AI — Trusted Medical Guidance, Backed by Evidence</title>
+    <meta name="description" content="MediCare AI delivers personalized, citation-backed medical care. It learns your health, follows up on your conditions, and gives evidence-based answers — not generic advice.">
+    <link rel="icon" type="image/png" href="/logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300..700;1,9..40,300..700&display=swap" rel="stylesheet">
+    <style>
+        *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+
+        :root {
+            --navy: #1B2B4B;
+            --navy-light: #2A3F6B;
+            --coral: #D4806E;
+            --coral-soft: #E8917A;
+            --coral-pale: #F2C4B8;
+            --warm-white: #FAFAF8;
+            --warm-gray: #F3F1EE;
+            --text: #1B2B4B;
+            --text-secondary: #5A6578;
+            --text-light: #8A91A0;
+            --border: #E4E1DC;
+        }
+
+        html { scroll-behavior: smooth }
+
+        body {
+            font-family: 'DM Sans', -apple-system, sans-serif;
+            color: var(--text);
+            background: var(--warm-white);
+            -webkit-font-smoothing: antialiased;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* ── NAV ── */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 100;
+            padding: 20px 0;
+            transition: all 0.4s ease;
+        }
+        nav.scrolled {
+            background: rgba(250,250,248,0.92);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            padding: 14px 0;
+        }
+        .nav-inner {
+            max-width: 1120px;
+            margin: 0 auto;
+            padding: 0 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            color: var(--navy);
+        }
+        .nav-brand img {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+        }
+        .nav-brand span {
+            font-family: 'Instrument Serif', serif;
+            font-size: 1.35rem;
+            letter-spacing: -0.01em;
+        }
+        .nav-links {
+            display: flex;
+            gap: 32px;
+            align-items: center;
+        }
+        .nav-links a {
+            text-decoration: none;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+        .nav-links a:hover { color: var(--navy) }
+        .nav-cta {
+            background: var(--navy) !important;
+            color: var(--warm-white) !important;
+            padding: 10px 24px;
+            border-radius: 10px;
+            font-weight: 500;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .nav-cta:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 16px rgba(27,43,75,0.25);
+        }
+
+        /* ── HERO ── */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -30%;
+            right: -15%;
+            width: 700px;
+            height: 700px;
+            background: radial-gradient(circle, rgba(212,128,110,0.08) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        .hero::after {
+            content: '';
+            position: absolute;
+            bottom: -20%;
+            left: -10%;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(27,43,75,0.04) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        .hero-inner {
+            max-width: 1120px;
+            margin: 0 auto;
+            padding: 140px 32px 80px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 80px;
+            align-items: center;
+        }
+        .hero-text { position: relative; z-index: 2 }
+        .hero-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--coral);
+            margin-bottom: 28px;
+            opacity: 0;
+            animation: fadeUp 0.8s 0.2s ease forwards;
+        }
+        .hero-tag::before {
+            content: '';
+            width: 24px;
+            height: 2px;
+            background: var(--coral);
+        }
+        h1 {
+            font-family: 'Instrument Serif', serif;
+            font-size: clamp(2.8rem, 5vw, 4rem);
+            line-height: 1.08;
+            letter-spacing: -0.025em;
+            margin-bottom: 28px;
+            opacity: 0;
+            animation: fadeUp 0.8s 0.35s ease forwards;
+        }
+        h1 em {
+            font-style: italic;
+            color: var(--coral);
+        }
+        .hero-desc {
+            font-size: 1.15rem;
+            line-height: 1.7;
+            color: var(--text-secondary);
+            max-width: 480px;
+            margin-bottom: 40px;
+            opacity: 0;
+            animation: fadeUp 0.8s 0.5s ease forwards;
+        }
+        .hero-actions {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            opacity: 0;
+            animation: fadeUp 0.8s 0.65s ease forwards;
+        }
+        .btn-primary {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--navy);
+            color: var(--warm-white);
+            padding: 16px 32px;
+            border-radius: 14px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: all 0.25s ease;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(27,43,75,0.3);
+        }
+        .btn-primary svg { width: 18px; height: 18px }
+        .btn-secondary {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.95rem;
+            transition: color 0.2s;
+        }
+        .btn-secondary:hover { color: var(--navy) }
+
+        /* hero visual */
+        .hero-visual {
+            position: relative;
+            z-index: 2;
+            opacity: 0;
+            animation: fadeUp 0.8s 0.5s ease forwards;
+        }
+        .hero-card {
+            background: white;
+            border-radius: 24px;
+            padding: 36px;
+            box-shadow: 0 1px 3px rgba(27,43,75,0.04), 0 20px 60px rgba(27,43,75,0.08);
+            border: 1px solid rgba(27,43,75,0.06);
+        }
+        .hero-card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+        .hero-card-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #34C759;
+        }
+        .hero-card-header span {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+        .chat-msg {
+            margin-bottom: 20px;
+            max-width: 85%;
+        }
+        .chat-msg.user {
+            margin-left: auto;
+            background: var(--navy);
+            color: white;
+            padding: 14px 18px;
+            border-radius: 18px 18px 4px 18px;
+            font-size: 0.92rem;
+        }
+        .chat-msg.ai {
+            background: var(--warm-gray);
+            padding: 14px 18px;
+            border-radius: 18px 18px 18px 4px;
+            font-size: 0.92rem;
+            line-height: 1.6;
+        }
+        .chat-msg.ai .source {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.75rem;
+            color: var(--coral);
+            font-weight: 600;
+            background: rgba(212,128,110,0.1);
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-left: 2px;
+            text-decoration: none;
+        }
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 14px 18px;
+            background: var(--warm-gray);
+            border-radius: 18px;
+            width: fit-content;
+        }
+        .typing-indicator span {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--text-light);
+            animation: typing 1.4s infinite;
+        }
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s }
+
+        /* ── TRUST BAR ── */
+        .trust-bar {
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            padding: 40px 0;
+        }
+        .trust-bar-inner {
+            max-width: 1120px;
+            margin: 0 auto;
+            padding: 0 32px;
+            display: flex;
+            justify-content: center;
+            gap: 60px;
+            flex-wrap: wrap;
+        }
+        .trust-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-secondary);
+            font-size: 0.88rem;
+            font-weight: 500;
+        }
+        .trust-item svg {
+            width: 20px;
+            height: 20px;
+            color: var(--coral);
+            flex-shrink: 0;
+        }
+
+        /* ── SECTION ── */
+        section {
+            max-width: 1120px;
+            margin: 0 auto;
+            padding: 120px 32px;
+        }
+        .section-tag {
+            font-size: 0.78rem;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--coral);
+            margin-bottom: 16px;
+        }
+        .section-title {
+            font-family: 'Instrument Serif', serif;
+            font-size: clamp(2rem, 3.5vw, 2.8rem);
+            line-height: 1.15;
+            letter-spacing: -0.02em;
+            margin-bottom: 20px;
+        }
+        .section-desc {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            max-width: 560px;
+            line-height: 1.7;
+        }
+
+        /* ── HOW IT WORKS ── */
+        .how-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 40px;
+            margin-top: 64px;
+        }
+        .how-card {
+            position: relative;
+            padding: 40px 32px;
+            background: white;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            transition: all 0.3s ease;
+        }
+        .how-card:hover {
+            border-color: var(--coral-pale);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(27,43,75,0.06);
+        }
+        .how-number {
+            font-family: 'Instrument Serif', serif;
+            font-size: 3.5rem;
+            color: var(--coral-pale);
+            line-height: 1;
+            margin-bottom: 20px;
+        }
+        .how-card h3 {
+            font-size: 1.15rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+        .how-card p {
+            font-size: 0.92rem;
+            color: var(--text-secondary);
+            line-height: 1.65;
+        }
+
+        /* ── PRINCIPLES ── */
+        .principles {
+            background: var(--navy);
+            color: white;
+            border-radius: 0;
+            margin: 0;
+            max-width: 100%;
+            padding: 120px 32px;
+        }
+        .principles-inner {
+            max-width: 1120px;
+            margin: 0 auto;
+        }
+        .principles .section-tag { color: var(--coral-soft) }
+        .principles .section-desc { color: rgba(255,255,255,0.6) }
+        .principles-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 32px;
+            margin-top: 64px;
+        }
+        .principle-card {
+            padding: 36px;
+            border-radius: 20px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.08);
+            transition: background 0.3s;
+        }
+        .principle-card:hover {
+            background: rgba(255,255,255,0.08);
+        }
+        .principle-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: rgba(212,128,110,0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            color: var(--coral-soft);
+        }
+        .principle-icon svg { width: 22px; height: 22px }
+        .principle-card h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        .principle-card p {
+            font-size: 0.9rem;
+            color: rgba(255,255,255,0.55);
+            line-height: 1.65;
+        }
+
+        /* ── PROFILE SECTION ── */
+        .profile-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 80px;
+            align-items: center;
+        }
+        .profile-visual {
+            background: white;
+            border-radius: 20px;
+            padding: 32px;
+            border: 1px solid var(--border);
+            box-shadow: 0 8px 40px rgba(27,43,75,0.05);
+        }
+        .profile-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 24px;
+        }
+        .profile-avatar {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--coral-pale), var(--coral-soft));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+        .profile-name { font-weight: 600; font-size: 0.95rem }
+        .profile-sub { font-size: 0.8rem; color: var(--text-light) }
+        .profile-items { display: flex; flex-direction: column; gap: 12px }
+        .profile-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: var(--warm-gray);
+            border-radius: 12px;
+            font-size: 0.88rem;
+        }
+        .profile-item .label { color: var(--text-secondary) }
+        .profile-item .value { font-weight: 600 }
+
+        /* ── CTA ── */
+        .cta-section {
+            text-align: center;
+            padding: 100px 32px 120px;
+        }
+        .cta-section .section-title {
+            max-width: 600px;
+            margin: 0 auto 20px;
+        }
+        .cta-section .section-desc {
+            max-width: 480px;
+            margin: 0 auto 40px;
+        }
+
+        /* ── FOOTER ── */
+        footer {
+            border-top: 1px solid var(--border);
+            padding: 48px 0;
+        }
+        .footer-inner {
+            max-width: 1120px;
+            margin: 0 auto;
+            padding: 0 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            gap: 32px;
+        }
+        .footer-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            color: var(--navy);
+            margin-bottom: 8px;
+        }
+        .footer-brand img { width: 28px; height: 28px; border-radius: 6px }
+        .footer-brand span {
+            font-family: 'Instrument Serif', serif;
+            font-size: 1.15rem;
+        }
+        .footer-note {
+            font-size: 0.82rem;
+            color: var(--text-light);
+            max-width: 320px;
+            line-height: 1.6;
+        }
+        .footer-links {
+            display: flex;
+            gap: 48px;
+        }
+        .footer-col h4 {
+            font-size: 0.78rem;
+            font-weight: 600;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--text-light);
+            margin-bottom: 14px;
+        }
+        .footer-col a {
+            display: block;
+            text-decoration: none;
+            color: var(--text-secondary);
+            font-size: 0.88rem;
+            margin-bottom: 10px;
+            transition: color 0.2s;
+        }
+        .footer-col a:hover { color: var(--navy) }
+        .footer-bottom {
+            max-width: 1120px;
+            margin: 32px auto 0;
+            padding: 24px 32px 0;
+            border-top: 1px solid var(--border);
+            font-size: 0.8rem;
+            color: var(--text-light);
+        }
+
+        /* ── ANIMATIONS ── */
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(24px) }
+            to { opacity: 1; transform: translateY(0) }
+        }
+        @keyframes typing {
+            0%, 60%, 100% { opacity: 0.3; transform: translateY(0) }
+            30% { opacity: 1; transform: translateY(-4px) }
+        }
+
+        .reveal {
+            opacity: 0;
+            transform: translateY(32px);
+            transition: opacity 0.7s ease, transform 0.7s ease;
+        }
+        .reveal.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* ── RESPONSIVE ── */
+        @media (max-width: 900px) {
+            .hero-inner { grid-template-columns: 1fr; gap: 48px; padding-top: 120px }
+            .hero-visual { order: -1 }
+            .how-grid { grid-template-columns: 1fr }
+            .principles-grid { grid-template-columns: 1fr }
+            .profile-section { grid-template-columns: 1fr; gap: 48px }
+            .nav-links { display: none }
+            .trust-bar-inner { gap: 32px }
+            .footer-inner { flex-direction: column }
+        }
+        @media (max-width: 600px) {
+            .hero-actions { flex-direction: column; align-items: flex-start }
+            .trust-bar-inner { flex-direction: column; align-items: flex-start; gap: 20px }
+        }
+    </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav id="nav">
+    <div class="nav-inner">
+        <a href="/" class="nav-brand">
+            <img src="/logo.png" alt="MediCare AI">
+            <span>MediCare AI</span>
+        </a>
+        <div class="nav-links">
+            <a href="#how">How It Works</a>
+            <a href="#principles">Our Approach</a>
+            <a href="/privacy">Privacy</a>
+            <a href="https://apps.apple.com/app/medicare-ai" class="nav-cta">Download</a>
+        </div>
+    </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+    <div class="hero-inner">
+        <div class="hero-text">
+            <div class="hero-tag">Medical AI Assistant</div>
+            <h1>A medical mind that <em>knows</em> you.</h1>
+            <p class="hero-desc">
+                MediCare AI doesn't give generic advice. It learns your health — your conditions, your medications, your history — and provides evidence-backed care that gets smarter with every conversation.
+            </p>
+            <div class="hero-actions">
+                <a href="https://apps.apple.com/app/medicare-ai" class="btn-primary">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+                    Download for iOS
+                </a>
+                <a href="#how" class="btn-secondary">See how it works &darr;</a>
+            </div>
+        </div>
+        <div class="hero-visual">
+            <div class="hero-card">
+                <div class="hero-card-header">
+                    <div class="hero-card-dot"></div>
+                    <span>MediCare AI</span>
+                </div>
+                <div class="chat-msg user">
+                    I've been getting dizzy when I stand up. I take lisinopril for blood pressure.
+                </div>
+                <div class="chat-msg ai">
+                    This sounds like it could be orthostatic hypotension, which is a known side effect of lisinopril and other ACE inhibitors. <span class="source">[1] Mayo Clinic</span>
+                    <br><br>
+                    Monitor your blood pressure in both sitting and standing positions. If dizziness persists or worsens, contact your prescribing physician about adjusting your dosage. <span class="source">[2] Cleveland Clinic</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- TRUST BAR -->
+<div class="trust-bar">
+    <div class="trust-bar-inner">
+        <div class="trust-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
+            Every claim backed by citations
+        </div>
+        <div class="trust-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Emergency detection built-in
+        </div>
+        <div class="trust-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+            Your data stays private
+        </div>
+        <div class="trust-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
+            Real-time medical evidence
+        </div>
+    </div>
+</div>
+
+<!-- HOW IT WORKS -->
+<section id="how">
+    <div class="reveal">
+        <div class="section-tag">How It Works</div>
+        <div class="section-title">Ask. Learn. Follow up.</div>
+        <div class="section-desc">No vague answers. No unsourced claims. MediCare AI searches trusted medical databases in real time, remembers your health context, and follows up on what matters.</div>
+    </div>
+    <div class="how-grid">
+        <div class="how-card reveal">
+            <div class="how-number">01</div>
+            <h3>Ask anything about your health</h3>
+            <p>Describe symptoms, ask about medications, or inquire about conditions. Type naturally, like you would to a doctor.</p>
+        </div>
+        <div class="how-card reveal">
+            <div class="how-number">02</div>
+            <h3>AI searches medical sources</h3>
+            <p>MediCare AI searches trusted medical databases — Mayo Clinic, Cleveland Clinic, NIH, and more — to find current, relevant evidence.</p>
+        </div>
+        <div class="how-card reveal">
+            <div class="how-number">03</div>
+            <h3>Get personalized, ongoing care</h3>
+            <p>Every claim links to its source. The app learns your health profile — medications, conditions, concerns — and builds on it. It's not one-off answers. It's continuous care.</p>
+        </div>
+    </div>
+</section>
+
+<!-- PRINCIPLES -->
+<div class="principles">
+    <div class="principles-inner">
+        <div class="reveal">
+            <div class="section-tag">Our Approach</div>
+            <div class="section-title">Not another symptom checker.</div>
+            <div class="section-desc">Most health apps give you generic answers with no sources and forget you exist after each session. We built something fundamentally different.</div>
+        </div>
+        <div class="principles-grid">
+            <div class="principle-card reveal">
+                <div class="principle-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
+                </div>
+                <h3>Citation-backed, always</h3>
+                <p>Every medical claim in every response includes a numbered citation linking to its source. If we can't cite it, we don't say it.</p>
+            </div>
+            <div class="principle-card reveal">
+                <div class="principle-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 000-7.78z"/></svg>
+                </div>
+                <h3>Learns and follows up</h3>
+                <p>The app builds a private health profile from your conversations and keeps learning. It remembers what you're dealing with and can follow up on unresolved symptoms, medication changes, and ongoing conditions.</p>
+            </div>
+            <div class="principle-card reveal">
+                <div class="principle-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                </div>
+                <h3>Emergency detection</h3>
+                <p>If your symptoms suggest a medical emergency — chest pain, stroke signs, severe breathing difficulty — the app immediately tells you to call 911.</p>
+            </div>
+            <div class="principle-card reveal">
+                <div class="principle-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                </div>
+                <h3>Private by design</h3>
+                <p>Your health data is never sold or shared for advertising. Conversations and health profiles stay between you and the app. Period.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- HEALTH PROFILE -->
+<section>
+    <div class="profile-section">
+        <div class="reveal">
+            <div class="section-tag">Health Profile</div>
+            <div class="section-title">It remembers, so you don't have to.</div>
+            <div class="section-desc">
+                MediCare AI maintains a private health profile that evolves with every conversation. Your medications, conditions, and concerns are automatically remembered — so every answer is informed by your full picture.
+            </div>
+            <p style="margin-top: 20px; font-size: 0.92rem; color: var(--text-secondary); line-height: 1.65">
+                When you mention a new medication, the profile updates. When you ask about drug interactions, it already knows what you're taking. Coming soon: proactive follow-ups, personalized exercise plans, dietary guidance, and medication reminders — all based on your health profile and verified sources.
+            </p>
+        </div>
+        <div class="profile-visual reveal">
+            <div class="profile-header">
+                <div class="profile-avatar">M</div>
+                <div>
+                    <div class="profile-name">Health Profile</div>
+                    <div class="profile-sub">Auto-updated from conversations</div>
+                </div>
+            </div>
+            <div class="profile-items">
+                <div class="profile-item">
+                    <span class="label">Current medications</span>
+                    <span class="value">Lisinopril, Metformin</span>
+                </div>
+                <div class="profile-item">
+                    <span class="label">Conditions</span>
+                    <span class="value">Hypertension, Type 2 Diabetes</span>
+                </div>
+                <div class="profile-item">
+                    <span class="label">Recent concerns</span>
+                    <span class="value">Dizziness on standing</span>
+                </div>
+                <div class="profile-item">
+                    <span class="label">Last updated</span>
+                    <span class="value">Today</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section">
+    <div class="reveal">
+        <div class="section-tag">Get Started</div>
+        <div class="section-title">Your health deserves better than Google.</div>
+        <div class="section-desc">
+            Download MediCare AI and ask your first question. It gets smarter about you with every conversation.
+        </div>
+        <a href="https://apps.apple.com/app/medicare-ai" class="btn-primary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+            Download for iOS
+        </a>
+    </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+    <div class="footer-inner">
+        <div>
+            <a href="/" class="footer-brand">
+                <img src="/logo.png" alt="MediCare AI">
+                <span>MediCare AI</span>
+            </a>
+            <p class="footer-note">
+                MediCare AI provides health information and education. It is not a substitute for professional medical advice, diagnosis, or treatment.
+            </p>
+        </div>
+        <div class="footer-links">
+            <div class="footer-col">
+                <h4>Legal</h4>
+                <a href="/privacy">Privacy Policy</a>
+                <a href="/terms">Terms of Service</a>
+            </div>
+            <div class="footer-col">
+                <h4>Contact</h4>
+                <a href="mailto:support@mediguide.co">support@mediguide.co</a>
+            </div>
+        </div>
+    </div>
+    <div class="footer-bottom">
+        &copy; 2026 MediCare AI. All rights reserved.
+    </div>
+</footer>
+
+<script>
+// Nav scroll effect
+const nav = document.getElementById('nav');
+window.addEventListener('scroll', () => {
+    nav.classList.toggle('scrolled', window.scrollY > 40);
+});
+
+// Scroll reveal
+const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry, i) => {
+        if (entry.isIntersecting) {
+            setTimeout(() => entry.target.classList.add('visible'), i * 80);
+            observer.unobserve(entry.target);
+        }
+    });
+}, { threshold: 0.15 });
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+</script>
+
+</body>
+</html>
