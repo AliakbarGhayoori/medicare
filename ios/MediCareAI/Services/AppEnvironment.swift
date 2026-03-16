@@ -19,7 +19,7 @@ struct AppEnvironment {
         }
 
         return AppEnvironment(
-            apiBaseURL: URL(string: "http://127.0.0.1:8000")!,
+            apiBaseURL: URL(string: "https://api.mediguide.co")!,
             useMockAuth: useMockAuth,
             useMockAPI: useMockAPI
         )
