@@ -385,7 +385,7 @@ async def generate_response_events(
         # Add assistant message with tool_calls to conversation
         messages.append(assistant_message.model_dump())
 
-        # Execute each tool call and add results
+        # Emit search status for each tool call first (keeps UI widget working)
         for tc in tool_calls:
             total_tool_calls += 1
             query_preview = _tool_call_query_preview(tc)
@@ -395,7 +395,12 @@ async def generate_response_events(
                 "status": "searching",
                 "query": query_preview,
             }
-            tool_result = await _execute_tool_call_openai(tc)
+
+        # Execute ALL tool calls in parallel for speed
+        tool_results = await asyncio.gather(
+            *[_execute_tool_call_openai(tc) for tc in tool_calls]
+        )
+        for tool_result in tool_results:
             messages.append(tool_result)
 
     raise APIError(502, "AI_ERROR", "AI did not complete tool use within limits.")
