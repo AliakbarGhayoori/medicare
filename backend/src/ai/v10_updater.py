@@ -75,13 +75,17 @@ async def update_v10_after_conversation(
     user_question: str,
     assistant_response: str,
 ) -> bool:
+    logger.info("v10_update_start question=%s", user_question[:80])
+
     if not should_update_v10(user_question):
+        logger.info("v10_update_skip reason=non_medical")
         return False
 
     existing = await get_v10_digest(db, firebase_uid)
     current_digest = (existing or {}).get("digest", "")
 
     if user_question in current_digest:
+        logger.info("v10_update_skip reason=already_in_digest")
         return False
 
     next_digest = ""
@@ -93,21 +97,27 @@ async def update_v10_after_conversation(
                 user_question=user_question,
                 assistant_response=assistant_response,
             )
+            logger.info("v10_update_ai_success len=%d", len(next_digest))
         except Exception:
             logger.warning(
                 "V10 AI update failed, falling back to heuristic",
                 exc_info=True,
             )
             next_digest = ""
+    else:
+        logger.info("v10_update_skip_ai reason=no_api_key")
 
     if not next_digest:
         next_digest = _heuristic_digest_update(
             current_digest=current_digest,
             user_question=user_question,
         )
+        logger.info("v10_update_heuristic len=%d", len(next_digest))
 
     if not next_digest or next_digest == current_digest:
+        logger.info("v10_update_skip reason=no_change")
         return False
 
     await upsert_v10_digest(db, firebase_uid=firebase_uid, digest=next_digest, source="auto")
+    logger.info("v10_update_saved source=auto")
     return True
