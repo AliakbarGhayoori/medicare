@@ -22,18 +22,24 @@ _TAVILY_SEARCH_TOOL_OPENAI = {
     "function": {
         "name": _TAVILY_TOOL_NAME,
         "description": (
-            "Search trusted medical web sources. Use this tool multiple times "
-            "with long-tail queries, not just one query. Cover differential "
-            "diagnosis, red flags, treatment, and medication safety when relevant."
+            "Search trusted medical web sources. You MUST provide multiple "
+            "queries in the 'queries' array to cover different aspects of the "
+            "question in a single call. All queries run in parallel for speed. "
+            "Cover differential diagnosis, red flags, treatment, and medication "
+            "safety when relevant. Always use 3-5 queries per call."
         ),
         "parameters": {
             "type": "object",
             "properties": {
-                "query": {
-                    "type": "string",
+                "queries": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "minItems": 1,
+                    "maxItems": 6,
                     "description": (
-                        "Specific long-tail query for medical evidence. "
-                        "Include population, symptom context, and intent."
+                        "Array of 3-5 specific long-tail queries for medical evidence. "
+                        "Each query should cover a different aspect: causes, treatment, "
+                        "red flags, medication interactions, etc."
                     ),
                 },
                 "search_depth": {
@@ -41,19 +47,8 @@ _TAVILY_SEARCH_TOOL_OPENAI = {
                     "enum": ["basic", "advanced"],
                     "description": "Use advanced unless speed is critical.",
                 },
-                "include_answer": {
-                    "type": "string",
-                    "enum": ["basic", "advanced"],
-                    "description": "Use advanced to get richer synthesis.",
-                },
-                "include_favicon": {"type": "boolean"},
-                "max_results": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "maximum": 10,
-                },
             },
-            "required": ["query"],
+            "required": ["queries"],
         },
     },
 }
@@ -201,11 +196,16 @@ async def _create_chat_with_retry(*, client: Any, request_kwargs: dict[str, Any]
 
 
 def _tool_call_query_preview(tool_call: Any) -> str:
-    """Extract the search query from an OpenAI-format tool call."""
+    """Extract a preview of search queries from an OpenAI-format tool call."""
     try:
         args = tool_call.function.arguments
         if isinstance(args, str):
             parsed = json.loads(args)
+            # New format: queries array
+            queries = parsed.get("queries")
+            if isinstance(queries, list) and queries:
+                return str(queries[0]).strip()
+            # Legacy format: single query
             return str(parsed.get("query", "")).strip()
     except (json.JSONDecodeError, AttributeError):
         pass
@@ -223,10 +223,34 @@ def _parse_tool_call_args(tool_call: Any) -> dict[str, Any]:
     return {}
 
 
+async def _execute_single_search(
+    query: str,
+    search_depth: str | None = None,
+) -> dict[str, Any]:
+    """Execute a single Tavily search and return the result dict."""
+    try:
+        search_payload = await execute_tavily_search(
+            query=query,
+            search_depth=search_depth,
+        )
+        return {"ok": True, "query": query, "search": search_payload}
+    except APIError as exc:
+        if exc.code in {
+            "SEARCH_BACKEND_UNAVAILABLE",
+            "SEARCH_BACKEND_AUTH_ERROR",
+        }:
+            raise
+        return {
+            "ok": False,
+            "query": query,
+            "error": {"code": exc.code, "message": exc.message},
+        }
+
+
 async def _execute_tool_call_openai(
     tool_call: Any,
-) -> dict[str, str]:
-    """Execute a tool call and return an OpenAI-format tool result message."""
+) -> tuple[dict[str, str], list[str]]:
+    """Execute a tool call and return (OpenAI-format tool result, list of queries)."""
     tool_call_id = tool_call.id
     tool_name = tool_call.function.name
     tool_input = _parse_tool_call_args(tool_call)
@@ -243,70 +267,54 @@ async def _execute_tool_call_openai(
             "role": "tool",
             "tool_call_id": tool_call_id,
             "content": json.dumps(error_payload),
-        }
+        }, []
 
-    query = str(tool_input.get("query") or "").strip()
-    if not query:
+    # Support both "queries" (array) and legacy "query" (string)
+    queries: list[str] = []
+    raw_queries = tool_input.get("queries")
+    if isinstance(raw_queries, list):
+        queries = [str(q).strip() for q in raw_queries if str(q).strip()]
+    if not queries:
+        # Fallback to single "query" field
+        single = str(tool_input.get("query") or "").strip()
+        if single:
+            queries = [single]
+
+    if not queries:
         error_payload = {
             "ok": False,
             "error": {
                 "code": "VALIDATION_ERROR",
-                "message": "The search query cannot be empty.",
+                "message": "At least one search query is required.",
             },
         }
         return {
             "role": "tool",
             "tool_call_id": tool_call_id,
             "content": json.dumps(error_payload),
-        }
+        }, []
 
-    try:
-        search_payload = await execute_tavily_search(
-            query=query,
-            search_depth=(
-                str(tool_input.get("search_depth"))
-                if isinstance(tool_input.get("search_depth"), str)
-                else None
-            ),
-            include_answer=(
-                str(tool_input.get("include_answer"))
-                if isinstance(tool_input.get("include_answer"), str)
-                else None
-            ),
-            include_favicon=(
-                bool(tool_input.get("include_favicon"))
-                if isinstance(tool_input.get("include_favicon"), bool)
-                else None
-            ),
-            max_results=(
-                int(tool_input["max_results"])
-                if isinstance(tool_input.get("max_results"), int)
-                else None
-            ),
-        )
-        payload = {"ok": True, "query": query, "search": search_payload}
-        return {
-            "role": "tool",
-            "tool_call_id": tool_call_id,
-            "content": json.dumps(payload),
-        }
-    except APIError as exc:
-        if exc.code in {
-            "SEARCH_BACKEND_UNAVAILABLE",
-            "SEARCH_BACKEND_AUTH_ERROR",
-        }:
-            raise
+    search_depth = (
+        str(tool_input.get("search_depth"))
+        if isinstance(tool_input.get("search_depth"), str)
+        else None
+    )
 
-        payload = {
-            "ok": False,
-            "query": query,
-            "error": {"code": exc.code, "message": exc.message},
-        }
-        return {
-            "role": "tool",
-            "tool_call_id": tool_call_id,
-            "content": json.dumps(payload),
-        }
+    # Execute ALL queries in parallel
+    results = await asyncio.gather(
+        *[_execute_single_search(q, search_depth) for q in queries]
+    )
+
+    payload = {
+        "ok": True,
+        "queries": queries,
+        "results": list(results),
+    }
+    return {
+        "role": "tool",
+        "tool_call_id": tool_call_id,
+        "content": json.dumps(payload),
+    }, queries
 
 
 async def generate_response_events(
@@ -394,26 +402,24 @@ async def generate_response_events(
         # Add assistant message with tool_calls to conversation
         messages.append(assistant_message.model_dump())
 
-        # Emit search status for each tool call first (keeps UI widget working)
+        # Execute tool calls (each may contain multiple queries run in parallel)
         for tc in tool_calls:
             total_tool_calls += 1
-            query_preview = _tool_call_query_preview(tc)
-            yield {
-                "type": "tool_use",
-                "tool": _TAVILY_TOOL_NAME,
-                "status": "searching",
-                "query": query_preview,
-            }
+            t1 = _time.monotonic()
+            tool_result, queries_used = await _execute_tool_call_openai(tc)
+            search_ms = int((_time.monotonic() - t1) * 1000)
+            logger.info("tavily_batch round=%d search_ms=%d query_count=%d queries=%s",
+                        _round_idx, search_ms, len(queries_used), queries_used)
 
-        # Execute ALL tool calls in parallel for speed
-        t1 = _time.monotonic()
-        tool_results = await asyncio.gather(
-            *[_execute_tool_call_openai(tc) for tc in tool_calls]
-        )
-        search_ms = int((_time.monotonic() - t1) * 1000)
-        logger.info("tavily_parallel round=%d search_ms=%d count=%d",
-                    _round_idx, search_ms, len(tool_results))
-        for tool_result in tool_results:
+            # Emit SSE for each query so the UI widget shows what's being searched
+            for q in queries_used:
+                yield {
+                    "type": "tool_use",
+                    "tool": _TAVILY_TOOL_NAME,
+                    "status": "searching",
+                    "query": q,
+                }
+
             messages.append(tool_result)
 
     raise APIError(502, "AI_ERROR", "AI did not complete tool use within limits.")
