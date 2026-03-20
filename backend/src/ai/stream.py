@@ -352,7 +352,10 @@ async def generate_response_events(
         "query": None,
     }
 
+    import time as _time
+
     for _round_idx in range(max_rounds):
+        t0 = _time.monotonic()
         response = await _create_chat_with_retry(
             client=client,
             request_kwargs={
@@ -364,6 +367,7 @@ async def generate_response_events(
                 "tool_choice": "auto",
             },
         )
+        ai_ms = int((_time.monotonic() - t0) * 1000)
 
         choice = response.choices[0]
         assistant_message = choice.message
@@ -371,6 +375,8 @@ async def generate_response_events(
         # No tool calls — model is done, emit text
         if not assistant_message.tool_calls:
             final_text = (assistant_message.content or "").strip()
+            logger.info("ai_round round=%d ai_ms=%d action=final_text len=%d",
+                        _round_idx, ai_ms, len(final_text))
             if not final_text:
                 raise APIError(502, "AI_ERROR", "AI response contained no text output.")
             for chunk in _chunk_text(final_text, settings.sse_chunk_size):
@@ -379,6 +385,9 @@ async def generate_response_events(
 
         # Model wants to call tools
         tool_calls = assistant_message.tool_calls
+        logger.info("ai_round round=%d ai_ms=%d action=tool_calls count=%d queries=%s",
+                    _round_idx, ai_ms, len(tool_calls),
+                    [_tool_call_query_preview(tc) for tc in tool_calls])
         if total_tool_calls + len(tool_calls) > max_tool_calls:
             raise APIError(502, "AI_ERROR", "AI used too many search tool calls.")
 
@@ -397,9 +406,13 @@ async def generate_response_events(
             }
 
         # Execute ALL tool calls in parallel for speed
+        t1 = _time.monotonic()
         tool_results = await asyncio.gather(
             *[_execute_tool_call_openai(tc) for tc in tool_calls]
         )
+        search_ms = int((_time.monotonic() - t1) * 1000)
+        logger.info("tavily_parallel round=%d search_ms=%d count=%d",
+                    _round_idx, search_ms, len(tool_results))
         for tool_result in tool_results:
             messages.append(tool_result)
 
