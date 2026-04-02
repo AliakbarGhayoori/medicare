@@ -5,9 +5,12 @@ struct OnboardingView: View {
 
     @AppStorage("mc.onboarding.page") private var page = 0
     @AppStorage("mc.onboarding.acceptedDisclaimer") private var acceptedDisclaimer = false
+    @AppStorage("mc.onboarding.acceptedDataSharing") private var acceptedDataSharing = false
     @State private var startedAt = Date()
 
-    private let pages: [(icon: String, title: String, subtitle: String)] = [
+    private let totalPages = 4
+
+    private let introPages: [(icon: String, title: String, subtitle: String)] = [
         ("stethoscope", "Health Answers You Can Trust", "Ask a health question and get clear answers with sources."),
         ("heart.text.square", "Personalized for You", "Share your health details so answers fit your situation."),
     ]
@@ -15,22 +18,25 @@ struct OnboardingView: View {
     var body: some View {
         VStack {
             TabView(selection: $page) {
-                ForEach(0..<pages.count, id: \.self) { index in
+                ForEach(0..<introPages.count, id: \.self) { index in
                     onboardingCard(
-                        icon: pages[index].icon,
-                        title: pages[index].title,
-                        subtitle: pages[index].subtitle
+                        icon: introPages[index].icon,
+                        title: introPages[index].title,
+                        subtitle: introPages[index].subtitle
                     )
                     .tag(index)
                 }
 
-                DisclaimerView(acceptedDisclaimer: $acceptedDisclaimer)
+                DataPrivacyView(acceptedDataSharing: $acceptedDataSharing)
                     .tag(2)
+
+                DisclaimerView(acceptedDisclaimer: $acceptedDisclaimer)
+                    .tag(3)
             }
             .tabViewStyle(.page(indexDisplayMode: .always))
 
             HStack(spacing: 8) {
-                ForEach(0..<3, id: \.self) { index in
+                ForEach(0..<totalPages, id: \.self) { index in
                     Circle()
                         .fill(index == page ? Color.mcAccent : Color.mcDivider)
                         .frame(width: 8, height: 8)
@@ -39,12 +45,12 @@ struct OnboardingView: View {
             .padding(.bottom, 8)
 
             Button {
-                if page < 2 {
+                if page < totalPages - 1 {
                     withAnimation { page += 1 }
                     return
                 }
 
-                guard acceptedDisclaimer else { return }
+                guard acceptedDisclaimer && acceptedDataSharing else { return }
                 let duration = Int(Date().timeIntervalSince(startedAt))
                 context.analyticsService.track(
                     "onboarding_completed",
@@ -52,9 +58,10 @@ struct OnboardingView: View {
                 )
                 page = 0
                 acceptedDisclaimer = false
+                acceptedDataSharing = false
                 context.hasCompletedOnboarding = true
             } label: {
-                Text(page == 2 ? "I understand and agree" : "Next")
+                Text(buttonLabel)
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
@@ -62,11 +69,33 @@ struct OnboardingView: View {
             .controlSize(.large)
             .padding(.horizontal, 16)
             .padding(.bottom, 16)
-            .disabled(page == 2 && !acceptedDisclaimer)
+            .disabled(isButtonDisabled)
         }
         .background(Color.mcBackground)
         .onAppear {
             startedAt = Date()
+        }
+    }
+
+    private var buttonLabel: String {
+        switch page {
+        case 2:
+            return "I consent to data sharing"
+        case 3:
+            return "I understand and agree"
+        default:
+            return "Next"
+        }
+    }
+
+    private var isButtonDisabled: Bool {
+        switch page {
+        case 2:
+            return !acceptedDataSharing
+        case 3:
+            return !acceptedDisclaimer
+        default:
+            return false
         }
     }
 
