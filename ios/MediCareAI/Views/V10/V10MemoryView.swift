@@ -101,9 +101,11 @@ struct V10MemoryView: View {
                     // Empty state
                     VStack(spacing: 16) {
                         Spacer()
-                        Image(systemName: "heart.text.square")
-                            .font(.system(size: 48))
-                            .foregroundStyle(Color.mcAccent)
+                        Image("v10-empty")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(maxWidth: 200, maxHeight: 200)
+                            .accessibilityHidden(true)
 
                         Text("Your Health Profile Is Empty")
                             .font(.title3)

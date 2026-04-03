@@ -3,32 +3,31 @@ import SwiftUI
 struct DisclaimerView: View {
     @Binding var acceptedDisclaimer: Bool
 
-    private let disclaimerPoints = [
-        "MediCare AI is not a doctor, nurse, or licensed healthcare provider.",
-        "This app is for general education and health information.",
-        "It cannot diagnose conditions, prescribe medication, or order treatment.",
-        "Talk with a qualified healthcare professional before making medical decisions.",
+    private let principles = [
+        "MediCare AI provides health information, not medical treatment.",
         "If you may be having an emergency, call 911 right away.",
-        "AI can make mistakes, so double-check important information with your clinician."
+        "AI can make mistakes. Check important information with your clinician."
     ]
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: 40))
-                    .foregroundStyle(Color.mcWarningAmber)
+                Image("onboarding-disclaimer")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxWidth: 180, maxHeight: 140)
                     .frame(maxWidth: .infinity)
+                    .accessibilityHidden(true)
                     .padding(.top, 8)
 
-                Text("Important Medical Notice")
+                Text("A Few Things to Know")
                     .font(.title3)
                     .bold()
                     .foregroundStyle(Color.mcTextPrimary)
                     .frame(maxWidth: .infinity, alignment: .center)
 
                 VStack(alignment: .leading, spacing: 12) {
-                    ForEach(disclaimerPoints, id: \.self) { point in
+                    ForEach(principles, id: \.self) { point in
                         HStack(alignment: .top, spacing: 10) {
                             Image(systemName: "info.circle.fill")
                                 .font(.subheadline)
@@ -47,7 +46,7 @@ struct DisclaimerView: View {
                 )
 
                 Toggle(isOn: $acceptedDisclaimer) {
-                    Text("I understand and agree to this notice")
+                    Text("I understand and agree")
                         .font(.headline)
                         .foregroundStyle(Color.mcTextPrimary)
                 }

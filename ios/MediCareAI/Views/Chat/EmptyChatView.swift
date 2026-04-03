@@ -16,14 +16,11 @@ struct EmptyChatView: View {
             Spacer(minLength: 40)
 
             VStack(spacing: 14) {
-                ZStack {
-                    Circle()
-                        .fill(Color.mcAccent.opacity(0.15))
-                        .frame(width: 74, height: 74)
-                    Image(systemName: "stethoscope")
-                        .font(.system(size: 31, weight: .semibold))
-                        .foregroundStyle(Color.mcAccent)
-                }
+                Image("empty-chat")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxWidth: 160, maxHeight: 160)
+                    .accessibilityHidden(true)
 
                 Text(greeting)
                     .font(.title3)
@@ -31,7 +28,7 @@ struct EmptyChatView: View {
                     .foregroundStyle(Color.mcTextPrimary)
                     .multilineTextAlignment(.center)
 
-                Text("Tell me what's on your mind. I'll search trusted medical sources and give you a clear, honest answer.")
+                Text("Ask me anything about your health.")
                     .font(.callout)
                     .foregroundStyle(Color.mcTextSecondary)
                     .multilineTextAlignment(.center)
@@ -47,15 +44,6 @@ struct EmptyChatView: View {
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
                     .stroke(Color.mcInputBorder.opacity(0.8), lineWidth: 1)
             )
-            .padding(.horizontal, 16)
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    capabilityChip(icon: "doc.text.magnifyingglass", text: "Evidence-backed")
-                    capabilityChip(icon: "person.fill", text: "Personalized to you")
-                    capabilityChip(icon: "cross.case.fill", text: "Safety-aware")
-                }
-            }
             .padding(.horizontal, 16)
 
             VStack(spacing: 12) {
@@ -102,21 +90,5 @@ struct EmptyChatView: View {
             return "Hi \(name), what can I help with?"
         }
         return "Hi there, what can I help with?"
-    }
-
-    @ViewBuilder
-    private func capabilityChip(icon: String, text: String) -> some View {
-        HStack(spacing: 6) {
-            Image(systemName: icon)
-            Text(text)
-        }
-        .font(.caption2)
-        .foregroundStyle(Color.mcTextSecondary)
-        .padding(.horizontal, 9)
-        .padding(.vertical, 7)
-        .background(
-            Capsule(style: .continuous)
-                .fill(Color.mcBackgroundSecondary)
-        )
     }
 }

@@ -32,6 +32,8 @@ targets:
       path: MediCareAI/Info.plist
       properties:
         CFBundleDisplayName: MediCare AI
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         ITSAppUsesNonExemptEncryption: false
         UIApplicationSupportsIndirectInputEvents: true
         UILaunchScreen: {}

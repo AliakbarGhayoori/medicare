@@ -7,10 +7,12 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0869EEF05113BE7F7C3DDDE6 /* ToastView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DA4F6661394595C95E6D554 /* ToastView.swift */; };
 		08EFBEBB10CDDE4E010E285A /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = D6AFC2FBB170F2E35D67A08A /* GoogleService-Info.plist */; };
 		0FCD78030EAD4D3E20746C75 /* AuthFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD1F57ECCB3B5179D1B3C477 /* AuthFlowTests.swift */; };
 		10395A84F485970DB12C4B24 /* SignUpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87E2C89CE64575BC1D9ECD57 /* SignUpView.swift */; };
 		1104CC579AC266C5BFC3C4D6 /* ErrorHandling.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41135B9CAD5FFFE5CB3C2C29 /* ErrorHandling.swift */; };
+		13A7B2CC8E214A60F06B4F0C /* TrustCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1846604F6E247E5E33C1A5E1 /* TrustCard.swift */; };
 		17F0F3700F4411E4009476D0 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 421D5538B4826807A7226BCC /* OnboardingView.swift */; };
 		1996B37DAD8FFD762A28AF6A /* MockAPIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66F239003A57181C15614988 /* MockAPIService.swift */; };
 		1B7058AFADC5DA70AA04D76E /* DataPrivacyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41E14A0B751E8C8124E5DDD3 /* DataPrivacyView.swift */; };
@@ -87,6 +89,7 @@
 		0409648493B858BD3A21F150 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
 		16E5742E09F7ED0ABD8226D1 /* APIError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIError.swift; sourceTree = "<group>"; };
 		170925A5D9222C2271F0420D /* AuthViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthViewModel.swift; sourceTree = "<group>"; };
+		1846604F6E247E5E33C1A5E1 /* TrustCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrustCard.swift; sourceTree = "<group>"; };
 		1895957DAB96B13D7B2FA519 /* AnalyticsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsService.swift; sourceTree = "<group>"; };
 		20F1DAEC397247B4318C3169 /* DateFormatting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DateFormatting.swift; sourceTree = "<group>"; };
 		247AB99B4DDAFEAFD57D8D64 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
@@ -112,6 +115,7 @@
 		779A9A14B7E348C0DE024C62 /* MediCareAITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = MediCareAITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		7CAE49A987F485827CE8174E /* UserSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserSettings.swift; sourceTree = "<group>"; };
 		87E2C89CE64575BC1D9ECD57 /* SignUpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignUpView.swift; sourceTree = "<group>"; };
+		8DA4F6661394595C95E6D554 /* ToastView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToastView.swift; sourceTree = "<group>"; };
 		98DD63D30E860341E72DD345 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		9FE9F2CFECA4C5E853383AEC /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		A210812995E77DB076863689 /* ChatStreamEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatStreamEvent.swift; sourceTree = "<group>"; };
@@ -270,6 +274,7 @@
 			children = (
 				0300EED190A1D6342A2967F4 /* Auth */,
 				5EE0293E7ABFC115C50288BC /* Chat */,
+				A20E8929E12C662AD105AEBF /* Components */,
 				863F497DB9B2FEB335BA727E /* Conversations */,
 				3C3FB7308EF73ABE7E7971DA /* Home */,
 				F1415945BF9F93CCC011D8D5 /* Onboarding */,
@@ -317,6 +322,15 @@
 				247AB99B4DDAFEAFD57D8D64 /* KeychainHelper.swift */,
 			);
 			path = Utilities;
+			sourceTree = "<group>";
+		};
+		A20E8929E12C662AD105AEBF /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				8DA4F6661394595C95E6D554 /* ToastView.swift */,
+				1846604F6E247E5E33C1A5E1 /* TrustCard.swift */,
+			);
+			path = Components;
 			sourceTree = "<group>";
 		};
 		B5716A253E9984C45DB666EC /* App */ = {
@@ -543,6 +557,8 @@
 				10395A84F485970DB12C4B24 /* SignUpView.swift in Sources */,
 				68AB0DD337B7FB01D271FBFC /* SplashView.swift in Sources */,
 				C36E8A4C083CF2BEE49E5228 /* StreamingTextView.swift in Sources */,
+				0869EEF05113BE7F7C3DDDE6 /* ToastView.swift in Sources */,
+				13A7B2CC8E214A60F06B4F0C /* TrustCard.swift in Sources */,
 				8F4987E9B56B78D5308C3905 /* TypingIndicatorView.swift in Sources */,
 				E2C25CEACA228CD1669802A1 /* UserSettings.swift in Sources */,
 				48D709C9788A8CB1CA5B313C /* V10Digest.swift in Sources */,

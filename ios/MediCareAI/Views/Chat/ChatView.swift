@@ -11,7 +11,7 @@ struct ChatView: View {
     @State private var isNearBottom = true
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .top) {
             backgroundLayer
 
             VStack(spacing: 0) {
@@ -24,7 +24,7 @@ struct ChatView: View {
                                     Task { await send() }
                                 }
                             } else {
-                                sessionStatusCard
+                                activityBanner
                             }
 
                             ForEach(Array(chatViewModel.messages.enumerated()), id: \.element.id) { index, message in
@@ -57,7 +57,6 @@ struct ChatView: View {
                                     .id("typing")
                             }
 
-                            // Invisible anchor at the bottom to detect scroll position
                             Color.clear.frame(height: 1)
                                 .id("bottom")
                                 .onAppear { isNearBottom = true }
@@ -87,25 +86,26 @@ struct ChatView: View {
                         .padding(.bottom, 2)
                 }
 
-                if let notice = chatViewModel.profileUpdatedNotice {
-                    profileNoticeCard(notice)
-                        .padding(.horizontal, 16)
-                        .padding(.top, 4)
-                        .padding(.bottom, 2)
-                }
-
-                Text("MediCare AI shares health information and does not replace medical care.")
-                    .font(.caption2)
-                    .foregroundStyle(Color.mcTextSecondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .frame(maxWidth: .infinity)
-
                 ChatInputBar(text: $draft, isDisabled: chatViewModel.isStreaming) {
                     Task { await send() }
                 }
                 .accessibilityLabel("Chat input and send")
+            }
+
+            // Toast overlay for profile updates
+            if let notice = chatViewModel.profileUpdatedNotice {
+                ToastView(message: notice)
+                    .padding(.top, 8)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .zIndex(100)
+                    .onAppear {
+                        Task {
+                            try? await Task.sleep(for: .seconds(3))
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                chatViewModel.dismissProfileUpdatedNotice()
+                            }
+                        }
+                    }
             }
         }
         .navigationTitle(conversation?.title ?? "New Chat")
@@ -158,31 +158,6 @@ struct ChatView: View {
         )
     }
 
-    private func profileNoticeCard(_ notice: String) -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(Color.mcSuccessGreen)
-            Text(notice)
-                .font(.callout)
-                .foregroundStyle(Color.mcTextSecondary)
-            Spacer()
-            Button("Dismiss") {
-                chatViewModel.dismissProfileUpdatedNotice()
-            }
-            .font(.callout)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 9)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.mcBackgroundSecondary)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(Color.mcInputBorder.opacity(0.7), lineWidth: 1)
-        )
-    }
-
     private var backgroundLayer: some View {
         LinearGradient(
             colors: [
@@ -201,11 +176,17 @@ struct ChatView: View {
         .ignoresSafeArea()
     }
 
-    private var sessionStatusCard: some View {
+    // Unified activity banner — changes state instead of being two separate cards
+    private var activityBanner: some View {
         HStack(spacing: 10) {
-            Circle()
-                .fill(statusColor.opacity(0.95))
-                .frame(width: 9, height: 9)
+            if chatViewModel.isSearching {
+                ProgressView()
+                    .tint(Color.mcAccent)
+            } else {
+                Circle()
+                    .fill(statusColor.opacity(0.95))
+                    .frame(width: 9, height: 9)
+            }
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(statusTitle)
@@ -217,16 +198,6 @@ struct ChatView: View {
             }
 
             Spacer()
-
-            Text("LIVE")
-                .font(.caption2.weight(.bold))
-                .foregroundStyle(Color.mcAccent)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(
-                    Capsule(style: .continuous)
-                        .fill(Color.mcAccent.opacity(0.14))
-                )
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
@@ -238,6 +209,8 @@ struct ChatView: View {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .stroke(Color.mcInputBorder.opacity(0.75), lineWidth: 1)
         )
+        .animation(.easeInOut(duration: 0.2), value: chatViewModel.isSearching)
+        .animation(.easeInOut(duration: 0.2), value: chatViewModel.isStreaming)
     }
 
     private var searchingCard: some View {
@@ -246,7 +219,7 @@ struct ChatView: View {
                 .tint(Color.mcAccent)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text("Reviewing trusted medical sources")
+                Text("Searching trusted sources")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(Color.mcTextPrimary)
                 Text(searchingText)
@@ -273,19 +246,22 @@ struct ChatView: View {
             return "Checking evidence"
         }
         if chatViewModel.isStreaming {
-            return "Drafting your answer"
+            return "Writing your answer"
         }
         return "Evidence-backed guidance"
     }
 
     private var statusSubtitle: String {
         if chatViewModel.isSearching {
-            return "Cross-checking reliable sources for your question."
+            if let query = chatViewModel.searchingQuery, !query.isEmpty {
+                return "Looking up: \(query)"
+            }
+            return "Cross-checking reliable sources..."
         }
         if chatViewModel.isStreaming {
-            return "Building a clear response with safety checks."
+            return "Building a clear response with citations."
         }
-        return "Every response is tailored and safety-reviewed."
+        return "Every response is personalized and safety-reviewed."
     }
 
     private var statusColor: Color {

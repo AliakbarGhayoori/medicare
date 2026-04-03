@@ -10,9 +10,9 @@ struct OnboardingView: View {
 
     private let totalPages = 4
 
-    private let introPages: [(icon: String, title: String, subtitle: String)] = [
-        ("stethoscope", "Health Answers You Can Trust", "Ask a health question and get clear answers with sources."),
-        ("heart.text.square", "Personalized for You", "Share your health details so answers fit your situation."),
+    private let introPages: [(illustration: String, title: String, subtitle: String)] = [
+        ("onboarding-welcome", "Health Answers You Can Trust", "Clear, evidence-backed answers from sources you can verify."),
+        ("onboarding-personalized", "Personalized for You", "The more you share, the more helpful your answers become."),
     ]
 
     var body: some View {
@@ -20,7 +20,7 @@ struct OnboardingView: View {
             TabView(selection: $page) {
                 ForEach(0..<introPages.count, id: \.self) { index in
                     onboardingCard(
-                        icon: introPages[index].icon,
+                        illustration: introPages[index].illustration,
                         title: introPages[index].title,
                         subtitle: introPages[index].subtitle
                     )
@@ -99,22 +99,27 @@ struct OnboardingView: View {
         }
     }
 
-    private func onboardingCard(icon: String, title: String, subtitle: String) -> some View {
-        VStack(spacing: 20) {
+    private func onboardingCard(illustration: String, title: String, subtitle: String) -> some View {
+        VStack(spacing: 16) {
             Spacer()
-            Image(systemName: icon)
-                .font(.system(size: 60))
-                .foregroundStyle(Color.mcAccent)
-                .padding(.bottom, 8)
+
+            Image(illustration)
+                .resizable()
+                .scaledToFit()
+                .frame(maxWidth: 240, maxHeight: 200)
+                .accessibilityHidden(true)
+
             Text(title)
                 .font(.title2)
                 .bold()
                 .foregroundStyle(Color.mcTextPrimary)
                 .multilineTextAlignment(.center)
+
             Text(subtitle)
-                .font(.body)
+                .font(.callout)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(Color.mcTextSecondary)
+
             Spacer()
         }
         .padding(24)

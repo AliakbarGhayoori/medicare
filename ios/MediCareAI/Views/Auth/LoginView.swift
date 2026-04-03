@@ -12,9 +12,11 @@ struct LoginView: View {
             ScrollView {
                 VStack(spacing: 24) {
                     VStack(spacing: 12) {
-                        Image(systemName: "stethoscope")
-                            .font(.system(size: 48))
-                            .foregroundStyle(Color.mcAccent)
+                        Image("auth-hero")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(maxWidth: 140, maxHeight: 140)
+                            .accessibilityHidden(true)
                             .padding(.top, 32)
 
                         Text("MediCare AI")
