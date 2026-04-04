@@ -107,11 +107,12 @@ struct HomeView: View {
             navigateToChat = true
         } label: {
             VStack(spacing: 16) {
-                Image("auth-hero")
+                Image("home-hero")
                     .resizable()
                     .scaledToFit()
-                    .frame(maxHeight: 100)
+                    .frame(maxHeight: 120)
                     .frame(maxWidth: .infinity)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                     .accessibilityHidden(true)
 
                 VStack(spacing: 6) {
