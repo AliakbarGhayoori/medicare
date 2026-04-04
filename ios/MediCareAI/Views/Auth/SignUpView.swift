@@ -12,6 +12,13 @@ struct SignUpView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
+                Image("auth-hero")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxWidth: 100, maxHeight: 100)
+                    .accessibilityHidden(true)
+                    .frame(maxWidth: .infinity)
+
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Email")
                         .font(.subheadline)
