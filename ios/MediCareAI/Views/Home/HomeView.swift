@@ -106,47 +106,30 @@ struct HomeView: View {
             pendingMessage = nil
             navigateToChat = true
         } label: {
-            VStack(alignment: .leading, spacing: 14) {
-                HStack(spacing: 12) {
-                    ZStack {
-                        Circle()
-                            .fill(Color.mcAccent.opacity(0.15))
-                            .frame(width: 48, height: 48)
-                        Image(systemName: "stethoscope")
-                            .font(.system(size: 22, weight: .semibold))
-                            .foregroundStyle(Color.mcAccent)
-                    }
+            VStack(spacing: 16) {
+                Image("auth-hero")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxHeight: 100)
+                    .frame(maxWidth: .infinity)
+                    .accessibilityHidden(true)
 
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Talk to MediCare AI")
-                            .font(.headline)
-                            .foregroundStyle(Color.mcTextPrimary)
-                        Text("Ask anything about your health")
-                            .font(.subheadline)
-                            .foregroundStyle(Color.mcTextSecondary)
-                    }
-
-                    Spacer()
-
-                    Image(systemName: "arrow.right.circle.fill")
-                        .font(.title2)
-                        .foregroundStyle(Color.mcAccent)
+                VStack(spacing: 6) {
+                    Text("Talk to MediCare AI")
+                        .font(.headline)
+                        .foregroundStyle(Color.mcTextPrimary)
+                    Text("Ask anything about your health")
+                        .font(.subheadline)
+                        .foregroundStyle(Color.mcTextSecondary)
                 }
 
-                Text("Tell me what's going on, ask about a medication, or just check in. I'll look up the latest medical evidence and give you a clear answer.")
-                    .font(.callout)
-                    .foregroundStyle(Color.mcTextSecondary)
-                    .lineSpacing(3)
+                Image(systemName: "arrow.right.circle.fill")
+                    .font(.title2)
+                    .foregroundStyle(Color.mcAccent)
             }
             .padding(20)
-            .background(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(Color.mcBackgroundSecondary)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .stroke(Color.mcAccent.opacity(0.2), lineWidth: 1.5)
-            )
+            .background(Color.mcBackgroundSecondary.opacity(0.7))
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         }
         .buttonStyle(.plain)
     }
@@ -160,9 +143,9 @@ struct HomeView: View {
                 .foregroundStyle(Color.mcTextSecondary)
 
             LazyVGrid(columns: [
-                GridItem(.flexible(), spacing: 12),
-                GridItem(.flexible(), spacing: 12)
-            ], spacing: 12) {
+                GridItem(.flexible(), spacing: 10),
+                GridItem(.flexible(), spacing: 10)
+            ], spacing: 10) {
                 ForEach(quickActions, id: \.label) { action in
                     Button {
                         pendingMessage = action.prompt
@@ -182,15 +165,9 @@ struct HomeView: View {
                             Spacer()
                         }
                         .padding(.horizontal, 14)
-                        .padding(.vertical, 14)
-                        .background(
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(Color.mcBackground)
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .stroke(Color.mcInputBorder, lineWidth: 1)
-                        )
+                        .padding(.vertical, 13)
+                        .background(Color.mcBackgroundSecondary.opacity(0.6))
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                     }
                     .buttonStyle(.plain)
                 }
@@ -205,9 +182,7 @@ struct HomeView: View {
         if let digest = v10ViewModel.digest, let text = digest.digest, !text.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
-                    Image(systemName: "heart.text.square.fill")
-                        .foregroundStyle(Color.mcAccent)
-                    Text("Your health profile")
+                    Label("Your health profile", systemImage: "heart.text.square.fill")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(Color.mcTextSecondary)
                     Spacer()
@@ -227,38 +202,22 @@ struct HomeView: View {
                     .lineSpacing(2)
             }
             .padding(16)
-            .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(Color.mcBackgroundSecondary)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(Color.mcInputBorder.opacity(0.6), lineWidth: 1)
-            )
+            .background(Color.mcBackgroundSecondary.opacity(0.6))
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         } else if !v10ViewModel.isLoading {
             VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 10) {
-                    Image(systemName: "heart.text.square")
-                        .foregroundStyle(Color.mcAccent)
-                    Text("Build your health profile")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Color.mcTextPrimary)
-                }
+                Label("Build your health profile", systemImage: "heart.text.square")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color.mcTextPrimary)
 
-                Text("Start a conversation and I'll learn about your conditions, medications, and health goals. The more we talk, the more personalized your care becomes.")
+                Text("Start a conversation and your conditions, medications, and concerns will be remembered automatically.")
                     .font(.callout)
                     .foregroundStyle(Color.mcTextSecondary)
                     .lineSpacing(2)
             }
             .padding(16)
-            .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(Color.mcBackgroundSecondary)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(Color.mcInputBorder.opacity(0.6), lineWidth: 1)
-            )
+            .background(Color.mcBackgroundSecondary.opacity(0.6))
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
     }
 
@@ -298,18 +257,18 @@ struct HomeView: View {
                     }
                 }
 
-                VStack(spacing: 8) {
+                VStack(spacing: 6) {
                     ForEach(recent) { conversation in
                         NavigationLink {
                             ChatView(conversation: conversation)
                         } label: {
                             HStack(spacing: 12) {
                                 Circle()
-                                    .fill(Color.mcAccent.opacity(0.12))
-                                    .frame(width: 36, height: 36)
+                                    .fill(Color.mcAccent.opacity(0.1))
+                                    .frame(width: 34, height: 34)
                                     .overlay(
                                         Image(systemName: "message.fill")
-                                            .font(.caption)
+                                            .font(.caption2)
                                             .foregroundStyle(Color.mcAccent)
                                     )
 
@@ -329,17 +288,11 @@ struct HomeView: View {
 
                                 Image(systemName: "chevron.right")
                                     .font(.caption2.weight(.semibold))
-                                    .foregroundStyle(Color.mcTextSecondary.opacity(0.5))
+                                    .foregroundStyle(Color.mcTextSecondary.opacity(0.4))
                             }
                             .padding(12)
-                            .background(
-                                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                    .fill(Color.mcBackground)
-                            )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                    .stroke(Color.mcInputBorder, lineWidth: 1)
-                            )
+                            .background(Color.mcBackgroundSecondary.opacity(0.5))
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                         }
                         .buttonStyle(.plain)
                     }

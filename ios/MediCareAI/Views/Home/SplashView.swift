@@ -1,13 +1,11 @@
 import SwiftUI
 
 struct SplashView: View {
-    @State private var logoScale: CGFloat = 0.6
+    @State private var logoScale: CGFloat = 0.7
     @State private var logoOpacity: Double = 0
     @State private var textOpacity: Double = 0
-    @State private var textOffset: CGFloat = 16
-    @State private var ringScale: CGFloat = 0.8
-    @State private var ringOpacity: Double = 0
-    @State private var subtitleOpacity: Double = 0
+    @State private var textOffset: CGFloat = 12
+    @State private var glowOpacity: Double = 0
 
     let onFinished: () -> Void
 
@@ -16,46 +14,31 @@ struct SplashView: View {
             Color.mcBackground
                 .ignoresSafeArea()
 
-            // Soft radial accent glow
+            // Soft radial glow
             Circle()
                 .fill(
                     RadialGradient(
-                        colors: [Color.mcAccent.opacity(0.12), Color.clear],
+                        colors: [Color.mcAccent.opacity(0.1), Color.clear],
                         center: .center,
                         startRadius: 20,
-                        endRadius: 200
+                        endRadius: 180
                     )
                 )
-                .frame(width: 400, height: 400)
-                .scaleEffect(ringScale)
-                .opacity(ringOpacity)
+                .frame(width: 360, height: 360)
+                .opacity(glowOpacity)
 
-            VStack(spacing: 18) {
-                ZStack {
-                    // Pulse ring
-                    Circle()
-                        .stroke(Color.mcAccent.opacity(0.2), lineWidth: 2)
-                        .frame(width: 100, height: 100)
-                        .scaleEffect(ringScale)
-                        .opacity(ringOpacity)
-
-                    // Logo icon
-                    ZStack {
-                        Circle()
-                            .fill(Color.mcAccent.opacity(0.15))
-                            .frame(width: 84, height: 84)
-
-                        Image(systemName: "stethoscope")
-                            .font(.system(size: 36, weight: .semibold))
-                            .foregroundStyle(Color.mcAccent)
-                    }
+            VStack(spacing: 20) {
+                Image("auth-hero")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 100, height: 100)
+                    .accessibilityHidden(true)
                     .scaleEffect(logoScale)
                     .opacity(logoOpacity)
-                }
 
                 VStack(spacing: 6) {
                     Text("MediCare AI")
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .font(.system(size: 26, weight: .bold, design: .rounded))
                         .foregroundStyle(Color.mcTextPrimary)
                         .opacity(textOpacity)
                         .offset(y: textOffset)
@@ -63,7 +46,7 @@ struct SplashView: View {
                     Text("Your health, understood.")
                         .font(.callout)
                         .foregroundStyle(Color.mcTextSecondary)
-                        .opacity(subtitleOpacity)
+                        .opacity(textOpacity)
                         .offset(y: textOffset)
                 }
             }
@@ -72,29 +55,19 @@ struct SplashView: View {
             withAnimation(.easeOut(duration: 0.6)) {
                 logoScale = 1.0
                 logoOpacity = 1.0
+                glowOpacity = 0.8
             }
 
-            withAnimation(.easeOut(duration: 0.7).delay(0.3)) {
-                ringScale = 1.15
-                ringOpacity = 0.6
-            }
-
-            withAnimation(.easeOut(duration: 0.5).delay(0.4)) {
+            withAnimation(.easeOut(duration: 0.5).delay(0.3)) {
                 textOpacity = 1.0
                 textOffset = 0
             }
 
-            withAnimation(.easeOut(duration: 0.5).delay(0.6)) {
-                subtitleOpacity = 1.0
+            withAnimation(.easeOut(duration: 0.6).delay(0.9)) {
+                glowOpacity = 0
             }
 
-            // Pulse ring outward then fade
-            withAnimation(.easeOut(duration: 0.8).delay(1.0)) {
-                ringScale = 1.5
-                ringOpacity = 0
-            }
-
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
                 onFinished()
             }
         }

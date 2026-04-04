@@ -4,11 +4,13 @@ struct AboutView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                // App info section
-                VStack(spacing: 8) {
-                    Image(systemName: "stethoscope")
-                        .font(.system(size: 40))
-                        .foregroundStyle(Color.mcAccent)
+                // App info
+                VStack(spacing: 10) {
+                    Image("auth-hero")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxWidth: 80, maxHeight: 80)
+                        .accessibilityHidden(true)
 
                     Text("MediCare AI")
                         .font(.title2)
@@ -20,42 +22,34 @@ struct AboutView: View {
                         .foregroundStyle(Color.mcTextSecondary)
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.bottom, 8)
+                .padding(.bottom, 4)
 
-                // Medical Disclaimer section
-                VStack(alignment: .leading, spacing: 12) {
-                    Label {
-                        Text("Important Medical Notice")
-                            .font(.headline)
-                            .foregroundStyle(Color.mcTextPrimary)
-                    } icon: {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundStyle(Color.mcWarningAmber)
-                    }
+                // Medical notice
+                VStack(alignment: .leading, spacing: 10) {
+                    Label("Medical Notice", systemImage: "info.circle.fill")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Color.mcAccent)
 
-                    Group {
-                        Text("MediCare AI gives health information and education. It is not a doctor, nurse, or licensed healthcare provider.")
-                        Text("Always speak with a qualified healthcare professional before changing medications or treatment plans.")
-                        Text("If you think you may be having a medical emergency, call 911 (or your local emergency number) right away.")
-                        Text("AI can make mistakes. Double-check important health information with your clinician.")
-                    }
-                    .font(.body)
-                    .foregroundStyle(Color.mcTextPrimary)
-                }
-                .padding(16)
-                .background(
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(Color.mcBackgroundSecondary)
-                )
-
-                // Privacy section
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Privacy")
-                        .font(.headline)
+                    Text("MediCare AI provides health information and education. It is not a substitute for professional medical advice, diagnosis, or treatment.")
+                        .font(.callout)
                         .foregroundStyle(Color.mcTextPrimary)
 
-                    Text("Your health data is used to personalize your experience. We do not sell your data or share it with third parties for advertising.")
-                        .font(.body)
+                    Text("If you think you may be having a medical emergency, call 911 right away.")
+                        .font(.callout)
+                        .foregroundStyle(Color.mcTextPrimary)
+                }
+                .padding(16)
+                .background(Color.mcBackgroundSecondary.opacity(0.6))
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+                // Privacy & Legal
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Privacy & Legal")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Color.mcTextSecondary)
+
+                    Text("Your health data is used to personalize your experience. We do not sell your data or share it for advertising.")
+                        .font(.callout)
                         .foregroundStyle(Color.mcTextSecondary)
 
                     Link(destination: URL(string: "https://mediguide.co/privacy")!) {
@@ -63,7 +57,6 @@ struct AboutView: View {
                             .font(.callout.weight(.medium))
                     }
                     .tint(Color.mcAccent)
-                    .padding(.top, 4)
 
                     Link(destination: URL(string: "https://mediguide.co/terms")!) {
                         Label("Terms of Service", systemImage: "doc.text.fill")
@@ -72,10 +65,8 @@ struct AboutView: View {
                     .tint(Color.mcAccent)
                 }
                 .padding(16)
-                .background(
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(Color.mcBackgroundSecondary)
-                )
+                .background(Color.mcBackgroundSecondary.opacity(0.6))
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             }
             .padding(16)
         }
