@@ -41,10 +41,6 @@ struct ChatView: View {
                                 .transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .bottom)))
                             }
 
-                            if chatViewModel.isSearching {
-                                searchingCard
-                            }
-
                             if chatViewModel.isStreaming && !chatViewModel.streamingText.isEmpty {
                                 StreamingTextView(text: chatViewModel.streamingText)
                                     .padding(.top, 10)
@@ -169,112 +165,56 @@ struct ChatView: View {
         )
         .overlay(alignment: .topTrailing) {
             Circle()
-                .fill(Color.mcAccent.opacity(0.08))
+                .fill(Color.mcAccent.opacity(0.06))
                 .frame(width: 220, height: 220)
                 .offset(x: 50, y: -90)
         }
         .ignoresSafeArea()
     }
 
-    // Unified activity banner — changes state instead of being two separate cards
+    // Single activity banner that changes state
     private var activityBanner: some View {
         HStack(spacing: 10) {
-            if chatViewModel.isSearching {
+            if chatViewModel.isSearching || (chatViewModel.isStreaming && chatViewModel.streamingText.isEmpty) {
                 ProgressView()
                     .tint(Color.mcAccent)
             } else {
                 Circle()
-                    .fill(statusColor.opacity(0.95))
-                    .frame(width: 9, height: 9)
+                    .fill(statusColor)
+                    .frame(width: 8, height: 8)
             }
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(statusTitle)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(Color.mcTextPrimary)
-                Text(statusSubtitle)
-                    .font(.caption2)
-                    .foregroundStyle(Color.mcTextSecondary)
-            }
+            Text(statusText)
+                .font(.caption)
+                .foregroundStyle(Color.mcTextSecondary)
+                .lineLimit(1)
 
             Spacer()
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.mcBackgroundSecondary.opacity(0.85))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(Color.mcInputBorder.opacity(0.75), lineWidth: 1)
-        )
-        .animation(.easeInOut(duration: 0.2), value: chatViewModel.isSearching)
-        .animation(.easeInOut(duration: 0.2), value: chatViewModel.isStreaming)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 9)
+        .background(Color.mcBackgroundSecondary.opacity(0.6))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .animation(.easeInOut(duration: 0.25), value: chatViewModel.isSearching)
+        .animation(.easeInOut(duration: 0.25), value: chatViewModel.isStreaming)
     }
 
-    private var searchingCard: some View {
-        HStack(spacing: 10) {
-            ProgressView()
-                .tint(Color.mcAccent)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Searching trusted sources")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(Color.mcTextPrimary)
-                Text(searchingText)
-                    .font(.caption2)
-                    .foregroundStyle(Color.mcTextSecondary)
-            }
-
-            Spacer()
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.mcBackgroundSecondary)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(Color.mcInputBorder.opacity(0.75), lineWidth: 1)
-        )
-    }
-
-    private var statusTitle: String {
-        if chatViewModel.isSearching {
-            return "Checking evidence"
-        }
-        if chatViewModel.isStreaming {
-            return "Writing your answer"
-        }
-        return "Evidence-backed guidance"
-    }
-
-    private var statusSubtitle: String {
+    private var statusText: String {
         if chatViewModel.isSearching {
             if let query = chatViewModel.searchingQuery, !query.isEmpty {
-                return "Looking up: \(query)"
+                return "Searching: \(query)"
             }
-            return "Cross-checking reliable sources..."
+            return "Searching trusted sources..."
         }
         if chatViewModel.isStreaming {
-            return "Building a clear response with citations."
+            return "Writing your answer..."
         }
-        return "Every response is personalized and safety-reviewed."
+        return "Evidence-backed, personalized guidance"
     }
 
     private var statusColor: Color {
-        if chatViewModel.isSearching { return .mcAccent }
         if chatViewModel.isStreaming { return .mcWarningAmber }
         return .mcSuccessGreen
-    }
-
-    private var searchingText: String {
-        if let query = chatViewModel.searchingQuery, !query.isEmpty {
-            return "Looking up: \(query)"
-        }
-        return "Checking trusted medical sources..."
     }
 
     private func send() async {

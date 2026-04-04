@@ -9,7 +9,7 @@ struct DataPrivacyView: View {
                 Image("onboarding-privacy")
                     .resizable()
                     .scaledToFit()
-                    .frame(maxWidth: 180, maxHeight: 140)
+                    .frame(maxWidth: 140, maxHeight: 120)
                     .frame(maxWidth: .infinity)
                     .accessibilityHidden(true)
                     .padding(.top, 8)
@@ -20,7 +20,7 @@ struct DataPrivacyView: View {
                     .foregroundStyle(Color.mcTextPrimary)
                     .frame(maxWidth: .infinity, alignment: .center)
 
-                Text("To answer your health questions, we share some data with these services:")
+                Text("To answer your health questions, some data is shared with third-party services. Your consent is required before any data is sent.")
                     .font(.callout)
                     .foregroundStyle(Color.mcTextSecondary)
                     .multilineTextAlignment(.center)
@@ -29,24 +29,29 @@ struct DataPrivacyView: View {
                 VStack(spacing: 10) {
                     TrustCard(
                         icon: "bubble.left.and.text.bubble.right",
-                        title: "Your questions",
-                        description: "Sent to an AI service to generate medical guidance."
+                        title: "Your questions and health profile",
+                        description: "Sent to OpenRouter (AI service) to generate medical guidance."
                     )
                     TrustCard(
                         icon: "magnifyingglass",
-                        title: "Evidence search",
-                        description: "Queries trusted sources like Mayo Clinic and NIH."
+                        title: "Search queries from your questions",
+                        description: "Sent to Tavily to find evidence from Mayo Clinic, NIH, and other trusted sources."
                     )
                     TrustCard(
                         icon: "lock.shield",
-                        title: "Your health profile",
-                        description: "Stays private. Never sold or shared for advertising."
+                        title: "Your data stays private",
+                        description: "Never sold, never used for ads, never shared beyond what's needed to answer you."
                     )
                 }
 
+                Text("Full details in our [Privacy Policy](https://mediguide.co/privacy).")
+                    .font(.caption)
+                    .foregroundStyle(Color.mcTextSecondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+
                 Toggle(isOn: $acceptedDataSharing) {
                     Text("I understand and consent to this data sharing")
-                        .font(.headline)
+                        .font(.subheadline.weight(.semibold))
                         .foregroundStyle(Color.mcTextPrimary)
                 }
                 .tint(Color.mcAccent)
