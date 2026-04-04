@@ -19,12 +19,24 @@ struct V10MemoryView: View {
                 ToastView(message: notice)
                     .padding(.bottom, 16)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .onAppear {
+                        Task {
+                            try? await Task.sleep(for: .seconds(3))
+                            withAnimation { v10ViewModel.noticeMessage = nil }
+                        }
+                    }
             }
 
             if let error = v10ViewModel.errorMessage {
                 ToastView(message: error, icon: "exclamationmark.circle.fill", iconColor: .mcEmergencyRed)
                     .padding(.bottom, 16)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .onAppear {
+                        Task {
+                            try? await Task.sleep(for: .seconds(4))
+                            withAnimation { v10ViewModel.errorMessage = nil }
+                        }
+                    }
             }
         }
         .accessibilityIdentifier("screen.healthProfile")
@@ -68,12 +80,12 @@ struct V10MemoryView: View {
                         if let updatedAt = v10ViewModel.digest?.updatedAt {
                             Label(DateFormatting.longDateTime.string(from: updatedAt), systemImage: "clock")
                                 .font(.caption)
-                                .foregroundStyle(Color.mcTextLight)
+                                .foregroundStyle(Color.mcTextSecondary)
                         }
                         if let source = v10ViewModel.digest?.lastUpdateSource {
                             Label(source == "auto" ? "Updated by AI" : "Updated by you", systemImage: source == "auto" ? "cpu" : "pencil")
                                 .font(.caption)
-                                .foregroundStyle(Color.mcTextLight)
+                                .foregroundStyle(Color.mcTextSecondary)
                         }
                     }
                     .padding(.top, 4)
@@ -168,6 +180,7 @@ struct V10MemoryView: View {
         var sections: [ProfileSection] = []
         var currentTitle = ""
         var currentItems: [String] = []
+        var preambleItems: [String] = []
 
         let lines = digest.components(separatedBy: .newlines)
 
@@ -176,6 +189,16 @@ struct V10MemoryView: View {
             if trimmed.isEmpty { continue }
 
             if trimmed.hasPrefix("#") {
+                // Save preamble lines collected before first heading
+                if currentTitle.isEmpty && !preambleItems.isEmpty {
+                    sections.append(ProfileSection(
+                        title: "Health Summary",
+                        icon: "heart.text.square",
+                        items: preambleItems
+                    ))
+                    preambleItems = []
+                }
+
                 // Save previous section
                 if !currentTitle.isEmpty && !currentItems.isEmpty {
                     sections.append(ProfileSection(
@@ -186,11 +209,29 @@ struct V10MemoryView: View {
                 }
                 currentTitle = trimmed.replacingOccurrences(of: "#", with: "").trimmingCharacters(in: .whitespaces)
                 currentItems = []
-            } else if trimmed.hasPrefix("-") || trimmed.hasPrefix("*") {
-                currentItems.append(String(trimmed.dropFirst()).trimmingCharacters(in: .whitespaces))
             } else {
-                currentItems.append(trimmed)
+                let item: String
+                if trimmed.hasPrefix("-") || trimmed.hasPrefix("*") {
+                    item = String(trimmed.dropFirst()).trimmingCharacters(in: .whitespaces)
+                } else {
+                    item = trimmed
+                }
+
+                if currentTitle.isEmpty {
+                    preambleItems.append(item)
+                } else {
+                    currentItems.append(item)
+                }
             }
+        }
+
+        // Save any remaining preamble (no headings at all)
+        if !preambleItems.isEmpty {
+            sections.append(ProfileSection(
+                title: "Health Summary",
+                icon: "heart.text.square",
+                items: preambleItems
+            ))
         }
 
         // Save last section
@@ -200,20 +241,6 @@ struct V10MemoryView: View {
                 icon: iconForSection(currentTitle),
                 items: currentItems
             ))
-        }
-
-        // If no sections found (unstructured text), wrap everything in one
-        if sections.isEmpty && !digest.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            let items = lines
-                .map { $0.trimmingCharacters(in: .whitespaces) }
-                .filter { !$0.isEmpty }
-                .map { line in
-                    if line.hasPrefix("-") || line.hasPrefix("*") {
-                        return String(line.dropFirst()).trimmingCharacters(in: .whitespaces)
-                    }
-                    return line
-                }
-            sections.append(ProfileSection(title: "Health Summary", icon: "heart.text.square", items: items))
         }
 
         return sections

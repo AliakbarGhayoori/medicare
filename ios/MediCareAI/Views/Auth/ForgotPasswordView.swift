@@ -8,6 +8,14 @@ struct ForgotPasswordView: View {
 
     var body: some View {
         VStack(spacing: 16) {
+            Image("auth-hero")
+                .resizable()
+                .scaledToFit()
+                .frame(maxWidth: 80, maxHeight: 80)
+                .accessibilityHidden(true)
+                .frame(maxWidth: .infinity)
+                .padding(.top, 8)
+
             Text("Enter the email linked to your account and we will send a reset link.")
                 .font(.callout)
                 .foregroundStyle(Color.mcTextSecondary)
