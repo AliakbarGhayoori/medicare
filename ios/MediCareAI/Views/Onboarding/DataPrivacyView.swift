@@ -4,60 +4,77 @@ struct DataPrivacyView: View {
     @Binding var acceptedDataSharing: Bool
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                Image("onboarding-privacy")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(maxWidth: 140, maxHeight: 120)
-                    .frame(maxWidth: .infinity)
-                    .accessibilityHidden(true)
-                    .padding(.top, 8)
+        VStack(spacing: 0) {
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 16) {
+                    Image("onboarding-privacy")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxWidth: 140, maxHeight: 120)
+                        .accessibilityHidden(true)
+                        .padding(.top, 40)
 
-                Text("Your Privacy Matters")
-                    .font(.title3)
-                    .bold()
-                    .foregroundStyle(Color.mcTextPrimary)
-                    .frame(maxWidth: .infinity, alignment: .center)
+                    VStack(spacing: 12) {
+                        Text("REQUIRED BEFORE USE")
+                            .font(.caption2.weight(.bold))
+                            .tracking(0.8)
+                            .foregroundStyle(Color.mcAccent)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(Color.mcAccent.opacity(0.1))
+                            .clipShape(Capsule())
 
-                Text("To answer your health questions, some data is shared with third-party services. Your consent is required before any data is sent.")
-                    .font(.callout)
-                    .foregroundStyle(Color.mcTextSecondary)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: .infinity)
+                        Text("Know What Gets Shared")
+                            .font(.title3.bold())
+                            .foregroundStyle(Color.mcTextPrimary)
+                            .multilineTextAlignment(.center)
 
-                VStack(spacing: 10) {
-                    TrustCard(
-                        icon: "bubble.left.and.text.bubble.right",
-                        title: "Your questions and health profile",
-                        description: "Sent to OpenRouter (AI service) to generate medical guidance."
-                    )
-                    TrustCard(
-                        icon: "magnifyingglass",
-                        title: "Search queries from your questions",
-                        description: "Sent to Tavily to find evidence from Mayo Clinic, NIH, and other trusted sources."
-                    )
-                    TrustCard(
-                        icon: "lock.shield",
-                        title: "Your data stays private",
-                        description: "Never sold, never used for ads, never shared beyond what's needed to answer you."
-                    )
+                        Text("To answer your questions, some data is sent to third-party services. Nothing is shared until you consent.")
+                            .font(.callout)
+                            .foregroundStyle(Color.mcTextSecondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(.horizontal, 24)
+
+                    VStack(spacing: 10) {
+                        TrustCard(
+                            icon: "bubble.left.and.text.bubble.right",
+                            title: "Your questions and health profile",
+                            description: "Sent to OpenRouter (AI service) to generate medical guidance."
+                        )
+                        TrustCard(
+                            icon: "magnifyingglass",
+                            title: "Search queries from your questions",
+                            description: "Sent to Tavily to find evidence from Mayo Clinic, NIH, and other trusted sources."
+                        )
+                        TrustCard(
+                            icon: "lock.shield",
+                            title: "Your data stays private",
+                            description: "Never sold, never used for ads, never shared beyond what's needed to answer you."
+                        )
+                    }
+                    .padding(.horizontal, 20)
+
+                    Text("[Privacy Policy](https://mediguide.co/privacy)")
+                        .font(.caption)
+                        .foregroundStyle(Color.mcTextSecondary)
+                        .tint(Color.mcAccent)
+
+                    // Consent card
+                    Toggle(isOn: $acceptedDataSharing) {
+                        Text("I understand and consent to this data sharing")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(Color.mcTextPrimary)
+                    }
+                    .tint(Color.mcAccent)
+                    .padding(16)
+                    .background(Color.mcBackgroundSecondary.opacity(0.5))
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .padding(.horizontal, 20)
+                    .accessibilityHint("Required before continuing")
                 }
-
-                Text("Full details in our [Privacy Policy](https://mediguide.co/privacy).")
-                    .font(.caption)
-                    .foregroundStyle(Color.mcTextSecondary)
-                    .frame(maxWidth: .infinity, alignment: .center)
-
-                Toggle(isOn: $acceptedDataSharing) {
-                    Text("I understand and consent to this data sharing")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Color.mcTextPrimary)
-                }
-                .tint(Color.mcAccent)
-                .accessibilityHint("Required before continuing")
+                .padding(.bottom, 16)
             }
-            .padding(20)
         }
     }
 }

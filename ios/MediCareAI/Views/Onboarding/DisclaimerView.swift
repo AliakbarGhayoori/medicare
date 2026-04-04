@@ -4,56 +4,77 @@ struct DisclaimerView: View {
     @Binding var acceptedDisclaimer: Bool
 
     private let principles = [
-        "MediCare AI provides health information, not medical treatment.",
-        "If you may be having an emergency, call 911 right away.",
-        "AI can make mistakes. Check important information with your clinician."
+        (icon: "heart.text.square", text: "Health information, not treatment."),
+        (icon: "phone.arrow.up.right", text: "Call 911 for emergencies."),
+        (icon: "checkmark.shield", text: "Double-check important decisions with your clinician."),
     ]
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                Image("onboarding-disclaimer")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(maxWidth: 180, maxHeight: 140)
-                    .frame(maxWidth: .infinity)
-                    .accessibilityHidden(true)
-                    .padding(.top, 8)
+        VStack(spacing: 0) {
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 16) {
+                    Image("onboarding-disclaimer")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxWidth: 140, maxHeight: 120)
+                        .accessibilityHidden(true)
+                        .padding(.top, 40)
 
-                Text("A Few Things to Know")
-                    .font(.title3)
-                    .bold()
-                    .foregroundStyle(Color.mcTextPrimary)
-                    .frame(maxWidth: .infinity, alignment: .center)
+                    VStack(spacing: 12) {
+                        Text("IMPORTANT TO KNOW")
+                            .font(.caption2.weight(.bold))
+                            .tracking(0.8)
+                            .foregroundStyle(Color.mcAccent)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(Color.mcAccent.opacity(0.1))
+                            .clipShape(Capsule())
 
-                VStack(alignment: .leading, spacing: 12) {
-                    ForEach(principles, id: \.self) { point in
-                        HStack(alignment: .top, spacing: 10) {
-                            Image(systemName: "info.circle.fill")
-                                .font(.subheadline)
-                                .foregroundStyle(Color.mcAccent)
-                                .padding(.top, 2)
-                            Text(point)
-                                .font(.body)
-                                .foregroundStyle(Color.mcTextPrimary)
+                        Text("Use MediCare AI as a Guide")
+                            .font(.title3.bold())
+                            .foregroundStyle(Color.mcTextPrimary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(.horizontal, 24)
+
+                    // Safety principles
+                    VStack(spacing: 10) {
+                        ForEach(principles, id: \.text) { principle in
+                            HStack(spacing: 12) {
+                                Image(systemName: principle.icon)
+                                    .font(.body)
+                                    .foregroundStyle(Color.mcAccent)
+                                    .frame(width: 28)
+
+                                Text(principle.text)
+                                    .font(.callout)
+                                    .foregroundStyle(Color.mcTextPrimary)
+
+                                Spacer()
+                            }
+                            .padding(.vertical, 12)
+                            .padding(.horizontal, 16)
+                            .background(Color.mcBackgroundSecondary.opacity(0.5))
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                         }
                     }
-                }
-                .padding(16)
-                .background(
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(Color.mcBackgroundSecondary)
-                )
+                    .padding(.horizontal, 20)
 
-                Toggle(isOn: $acceptedDisclaimer) {
-                    Text("I understand and agree")
-                        .font(.headline)
-                        .foregroundStyle(Color.mcTextPrimary)
+                    // Agreement card
+                    Toggle(isOn: $acceptedDisclaimer) {
+                        Text("I understand and agree")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(Color.mcTextPrimary)
+                    }
+                    .tint(Color.mcAccent)
+                    .padding(16)
+                    .background(Color.mcBackgroundSecondary.opacity(0.5))
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .padding(.horizontal, 20)
+                    .accessibilityHint("Required before continuing")
                 }
-                .tint(Color.mcAccent)
-                .accessibilityHint("Required before continuing")
+                .padding(.bottom, 16)
             }
-            .padding(20)
         }
     }
 }
