@@ -110,6 +110,32 @@ struct V10EditorView: View {
                 .padding(16)
             }
         }
+        .overlay(alignment: .top) {
+            if let notice = v10ViewModel.noticeMessage {
+                ToastView(message: notice)
+                    .padding(.top, 8)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .zIndex(100)
+                    .onAppear {
+                        Task {
+                            try? await Task.sleep(for: .seconds(3))
+                            withAnimation { v10ViewModel.noticeMessage = nil }
+                        }
+                    }
+            }
+            if let error = v10ViewModel.errorMessage {
+                ToastView(message: error, icon: "exclamationmark.circle.fill", iconColor: .mcEmergencyRed)
+                    .padding(.top, 8)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .zIndex(100)
+                    .onAppear {
+                        Task {
+                            try? await Task.sleep(for: .seconds(4))
+                            withAnimation { v10ViewModel.errorMessage = nil }
+                        }
+                    }
+            }
+        }
         .background(Color.mcBackground)
         .navigationTitle("Edit Health Profile")
         .toolbar {
