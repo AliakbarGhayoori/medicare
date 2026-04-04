@@ -7,6 +7,7 @@ struct ForgotPasswordView: View {
     @State private var didSend = false
 
     var body: some View {
+        ScrollView {
         VStack(spacing: 16) {
             VStack(spacing: 10) {
                 Image("auth-hero")
@@ -76,6 +77,7 @@ struct ForgotPasswordView: View {
             Spacer()
         }
         .padding(16)
+        }
         .background(Color.mcBackground)
         .navigationTitle("Reset Password")
     }

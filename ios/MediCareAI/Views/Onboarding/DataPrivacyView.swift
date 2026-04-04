@@ -5,38 +5,34 @@ struct DataPrivacyView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            // Hero zone
+            Image("onboarding-privacy")
+                .resizable()
+                .scaledToFit()
+                .frame(maxWidth: 140, maxHeight: 120)
+                .accessibilityHidden(true)
+                .padding(.top, 40)
+                .frame(maxWidth: .infinity)
+
+            Spacer(minLength: 12)
+
+            // Content dock
             ScrollView(showsIndicators: false) {
-                VStack(spacing: 16) {
-                    Image("onboarding-privacy")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(maxWidth: 140, maxHeight: 120)
-                        .accessibilityHidden(true)
-                        .padding(.top, 40)
+                VStack(spacing: 14) {
+                    EyebrowChip(text: "Required before use")
 
-                    VStack(spacing: 12) {
-                        Text("REQUIRED BEFORE USE")
-                            .font(.caption2.weight(.bold))
-                            .tracking(0.8)
-                            .foregroundStyle(Color.mcAccent)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
-                            .background(Color.mcAccent.opacity(0.1))
-                            .clipShape(Capsule())
+                    Text("Know What Gets Shared")
+                        .font(.title3.bold())
+                        .foregroundStyle(Color.mcTextPrimary)
+                        .multilineTextAlignment(.center)
 
-                        Text("Know What Gets Shared")
-                            .font(.title3.bold())
-                            .foregroundStyle(Color.mcTextPrimary)
-                            .multilineTextAlignment(.center)
+                    Text("Some data is sent to third-party services to answer your questions. Nothing is shared until you consent.")
+                        .font(.callout)
+                        .foregroundStyle(Color.mcTextSecondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 4)
 
-                        Text("To answer your questions, some data is sent to third-party services. Nothing is shared until you consent.")
-                            .font(.callout)
-                            .foregroundStyle(Color.mcTextSecondary)
-                            .multilineTextAlignment(.center)
-                    }
-                    .padding(.horizontal, 24)
-
-                    VStack(spacing: 10) {
+                    VStack(spacing: 8) {
                         TrustCard(
                             icon: "bubble.left.and.text.bubble.right",
                             title: "Your questions and health profile",
@@ -50,31 +46,35 @@ struct DataPrivacyView: View {
                         TrustCard(
                             icon: "lock.shield",
                             title: "Your data stays private",
-                            description: "Never sold, never used for ads, never shared beyond what's needed to answer you."
+                            description: "Never sold, never used for ads, never shared beyond what's needed."
                         )
                     }
-                    .padding(.horizontal, 20)
 
                     Text("[Privacy Policy](https://mediguide.co/privacy)")
                         .font(.caption)
                         .foregroundStyle(Color.mcTextSecondary)
                         .tint(Color.mcAccent)
 
-                    // Consent card
+                    // Consent toggle
                     Toggle(isOn: $acceptedDataSharing) {
                         Text("I understand and consent to this data sharing")
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(Color.mcTextPrimary)
                     }
                     .tint(Color.mcAccent)
-                    .padding(16)
-                    .background(Color.mcBackgroundSecondary.opacity(0.5))
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    .padding(.horizontal, 20)
+                    .padding(14)
+                    .background(Color.mcBackgroundSecondary.opacity(0.4))
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                     .accessibilityHint("Required before continuing")
                 }
-                .padding(.bottom, 16)
+                .padding(.horizontal, 20)
+                .padding(.top, 20)
+                .padding(.bottom, 12)
             }
+            .background(
+                UnevenRoundedRectangle(topLeadingRadius: 28, topTrailingRadius: 28)
+                    .fill(Color.mcBackgroundSecondary.opacity(0.5))
+            )
         }
     }
 }

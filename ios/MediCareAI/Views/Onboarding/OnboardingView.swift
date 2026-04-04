@@ -194,7 +194,7 @@ struct OnboardingView: View {
 
 // MARK: - Small Components
 
-private struct EyebrowChip: View {
+struct EyebrowChip: View {
     let text: String
 
     var body: some View {
@@ -209,7 +209,7 @@ private struct EyebrowChip: View {
     }
 }
 
-private struct ProofChip: View {
+struct ProofChip: View {
     let text: String
 
     var body: some View {

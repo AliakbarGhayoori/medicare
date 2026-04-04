@@ -11,34 +11,29 @@ struct DisclaimerView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            // Hero zone
+            Image("onboarding-disclaimer")
+                .resizable()
+                .scaledToFit()
+                .frame(maxWidth: 140, maxHeight: 120)
+                .accessibilityHidden(true)
+                .padding(.top, 40)
+                .frame(maxWidth: .infinity)
+
+            Spacer(minLength: 12)
+
+            // Content dock
             ScrollView(showsIndicators: false) {
-                VStack(spacing: 16) {
-                    Image("onboarding-disclaimer")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(maxWidth: 140, maxHeight: 120)
-                        .accessibilityHidden(true)
-                        .padding(.top, 40)
+                VStack(spacing: 14) {
+                    EyebrowChip(text: "Important to know")
 
-                    VStack(spacing: 12) {
-                        Text("IMPORTANT TO KNOW")
-                            .font(.caption2.weight(.bold))
-                            .tracking(0.8)
-                            .foregroundStyle(Color.mcAccent)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
-                            .background(Color.mcAccent.opacity(0.1))
-                            .clipShape(Capsule())
-
-                        Text("Use MediCare AI as a Guide")
-                            .font(.title3.bold())
-                            .foregroundStyle(Color.mcTextPrimary)
-                            .multilineTextAlignment(.center)
-                    }
-                    .padding(.horizontal, 24)
+                    Text("Use MediCare AI as a Guide")
+                        .font(.title3.bold())
+                        .foregroundStyle(Color.mcTextPrimary)
+                        .multilineTextAlignment(.center)
 
                     // Safety principles
-                    VStack(spacing: 10) {
+                    VStack(spacing: 8) {
                         ForEach(principles, id: \.text) { principle in
                             HStack(spacing: 12) {
                                 Image(systemName: principle.icon)
@@ -52,29 +47,33 @@ struct DisclaimerView: View {
 
                                 Spacer()
                             }
-                            .padding(.vertical, 12)
-                            .padding(.horizontal, 16)
-                            .background(Color.mcBackgroundSecondary.opacity(0.5))
+                            .padding(.vertical, 11)
+                            .padding(.horizontal, 14)
+                            .background(Color.mcBackgroundSecondary.opacity(0.4))
                             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                         }
                     }
-                    .padding(.horizontal, 20)
 
-                    // Agreement card
+                    // Consent toggle
                     Toggle(isOn: $acceptedDisclaimer) {
                         Text("I understand and agree")
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(Color.mcTextPrimary)
                     }
                     .tint(Color.mcAccent)
-                    .padding(16)
-                    .background(Color.mcBackgroundSecondary.opacity(0.5))
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    .padding(.horizontal, 20)
+                    .padding(14)
+                    .background(Color.mcBackgroundSecondary.opacity(0.4))
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                     .accessibilityHint("Required before continuing")
                 }
-                .padding(.bottom, 16)
+                .padding(.horizontal, 20)
+                .padding(.top, 20)
+                .padding(.bottom, 12)
             }
+            .background(
+                UnevenRoundedRectangle(topLeadingRadius: 28, topTrailingRadius: 28)
+                    .fill(Color.mcBackgroundSecondary.opacity(0.5))
+            )
         }
     }
 }
