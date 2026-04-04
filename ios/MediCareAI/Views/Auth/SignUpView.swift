@@ -12,12 +12,23 @@ struct SignUpView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
-                Image("auth-hero")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(maxWidth: 100, maxHeight: 100)
-                    .accessibilityHidden(true)
-                    .frame(maxWidth: .infinity)
+                VStack(spacing: 10) {
+                    Image("auth-hero")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxWidth: 100, maxHeight: 100)
+                        .accessibilityHidden(true)
+
+                    Text("MediCare AI")
+                        .font(.title2.bold())
+                        .foregroundStyle(Color.mcTextPrimary)
+
+                    Text("Create your account to get started.")
+                        .font(.callout)
+                        .foregroundStyle(Color.mcTextSecondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.bottom, 4)
 
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Email")

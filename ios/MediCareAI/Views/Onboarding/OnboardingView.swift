@@ -93,7 +93,7 @@ struct OnboardingView: View {
                 .accessibilityHidden(true)
                 .padding(.top, 60)
 
-            Spacer(minLength: 20)
+            Spacer(minLength: 16)
 
             // Content dock
             VStack(spacing: 14) {
@@ -117,8 +117,12 @@ struct OnboardingView: View {
                 .padding(.top, 4)
             }
             .padding(.horizontal, 24)
-
-            Spacer(minLength: 16)
+            .padding(.vertical, 24)
+            .frame(maxWidth: .infinity)
+            .background(
+                UnevenRoundedRectangle(topLeadingRadius: 28, topTrailingRadius: 28)
+                    .fill(Color.mcBackgroundSecondary.opacity(0.5))
+            )
         }
     }
 
@@ -133,7 +137,7 @@ struct OnboardingView: View {
                 .accessibilityHidden(true)
                 .padding(.top, 60)
 
-            Spacer(minLength: 20)
+            Spacer(minLength: 16)
 
             VStack(spacing: 14) {
                 EyebrowChip(text: "More helpful over time")
@@ -160,8 +164,12 @@ struct OnboardingView: View {
                     .foregroundStyle(Color.mcTextSecondary)
             }
             .padding(.horizontal, 24)
-
-            Spacer(minLength: 16)
+            .padding(.vertical, 24)
+            .frame(maxWidth: .infinity)
+            .background(
+                UnevenRoundedRectangle(topLeadingRadius: 28, topTrailingRadius: 28)
+                    .fill(Color.mcBackgroundSecondary.opacity(0.5))
+            )
         }
     }
 
