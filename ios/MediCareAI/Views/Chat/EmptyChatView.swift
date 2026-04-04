@@ -12,14 +12,14 @@ struct EmptyChatView: View {
     ]
 
     var body: some View {
-        VStack(spacing: 22) {
+        VStack(spacing: 24) {
             Spacer(minLength: 40)
 
             VStack(spacing: 14) {
                 Image("empty-chat")
                     .resizable()
                     .scaledToFit()
-                    .frame(maxWidth: 160, maxHeight: 160)
+                    .frame(maxWidth: 140, maxHeight: 140)
                     .accessibilityHidden(true)
 
                 Text(greeting)
@@ -34,19 +34,13 @@ struct EmptyChatView: View {
                     .multilineTextAlignment(.center)
             }
             .padding(.horizontal, 24)
-            .padding(.vertical, 18)
+            .padding(.vertical, 20)
             .frame(maxWidth: .infinity)
-            .background(
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(Color.mcBackgroundSecondary)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .stroke(Color.mcInputBorder.opacity(0.8), lineWidth: 1)
-            )
+            .background(Color.mcBackgroundSecondary.opacity(0.6))
+            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
             .padding(.horizontal, 16)
 
-            VStack(spacing: 12) {
+            VStack(spacing: 10) {
                 ForEach(suggestions, id: \.self) { suggestion in
                     Button {
                         onSuggestionTap(suggestion)
@@ -63,16 +57,10 @@ struct EmptyChatView: View {
                                 .multilineTextAlignment(.leading)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
-                        .padding(.vertical, 14)
+                        .padding(.vertical, 13)
                         .padding(.horizontal, 14)
-                        .background(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .fill(Color.mcBackground)
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .stroke(Color.mcInputBorder, lineWidth: 1)
-                        )
+                        .background(Color.mcBackgroundSecondary.opacity(0.5))
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Use suggested question: \(suggestion)")
