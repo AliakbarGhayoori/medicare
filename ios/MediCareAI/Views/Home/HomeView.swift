@@ -109,9 +109,10 @@ struct HomeView: View {
             VStack(spacing: 16) {
                 Image("home-hero")
                     .resizable()
-                    .scaledToFit()
-                    .frame(maxHeight: 120)
+                    .scaledToFill()
                     .frame(maxWidth: .infinity)
+                    .frame(height: 120)
+                    .clipped()
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                     .accessibilityHidden(true)
 

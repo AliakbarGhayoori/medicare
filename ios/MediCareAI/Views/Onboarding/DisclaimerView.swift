@@ -11,16 +11,11 @@ struct DisclaimerView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Hero zone
-            Image("onboarding-disclaimer")
-                .resizable()
-                .scaledToFit()
-                .frame(maxWidth: 140, maxHeight: 120)
-                .accessibilityHidden(true)
-                .padding(.top, 40)
-                .frame(maxWidth: .infinity)
+            // Support plate image
+            ImagePlate(name: "onboarding-disclaimer", maxSize: 140)
+                .padding(.top, 32)
 
-            Spacer(minLength: 12)
+            Spacer(minLength: 8)
 
             // Content dock
             ScrollView(showsIndicators: false) {
@@ -32,7 +27,6 @@ struct DisclaimerView: View {
                         .foregroundStyle(Color.mcTextPrimary)
                         .multilineTextAlignment(.center)
 
-                    // Safety principles
                     VStack(spacing: 8) {
                         ForEach(principles, id: \.text) { principle in
                             HStack(spacing: 12) {
@@ -49,12 +43,11 @@ struct DisclaimerView: View {
                             }
                             .padding(.vertical, 11)
                             .padding(.horizontal, 14)
-                            .background(Color.mcBackgroundSecondary.opacity(0.4))
+                            .background(Color.mcBackgroundSecondary)
                             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                         }
                     }
 
-                    // Consent toggle
                     Toggle(isOn: $acceptedDisclaimer) {
                         Text("I understand and agree")
                             .font(.subheadline.weight(.semibold))
@@ -62,18 +55,14 @@ struct DisclaimerView: View {
                     }
                     .tint(Color.mcAccent)
                     .padding(14)
-                    .background(Color.mcBackgroundSecondary.opacity(0.4))
+                    .background(Color.mcBackgroundSecondary)
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                     .accessibilityHint("Required before continuing")
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 20)
+                .padding(.top, 16)
                 .padding(.bottom, 12)
             }
-            .background(
-                UnevenRoundedRectangle(topLeadingRadius: 28, topTrailingRadius: 28)
-                    .fill(Color.mcBackgroundSecondary.opacity(0.5))
-            )
         }
     }
 }

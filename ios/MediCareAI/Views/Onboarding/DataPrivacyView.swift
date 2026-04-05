@@ -5,16 +5,11 @@ struct DataPrivacyView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Hero zone
-            Image("onboarding-privacy")
-                .resizable()
-                .scaledToFit()
-                .frame(maxWidth: 140, maxHeight: 120)
-                .accessibilityHidden(true)
-                .padding(.top, 40)
-                .frame(maxWidth: .infinity)
+            // Support plate image
+            ImagePlate(name: "onboarding-privacy", maxSize: 140)
+                .padding(.top, 32)
 
-            Spacer(minLength: 12)
+            Spacer(minLength: 8)
 
             // Content dock
             ScrollView(showsIndicators: false) {
@@ -55,7 +50,6 @@ struct DataPrivacyView: View {
                         .foregroundStyle(Color.mcTextSecondary)
                         .tint(Color.mcAccent)
 
-                    // Consent toggle
                     Toggle(isOn: $acceptedDataSharing) {
                         Text("I understand and consent to this data sharing")
                             .font(.subheadline.weight(.semibold))
@@ -63,18 +57,14 @@ struct DataPrivacyView: View {
                     }
                     .tint(Color.mcAccent)
                     .padding(14)
-                    .background(Color.mcBackgroundSecondary.opacity(0.4))
+                    .background(Color.mcBackgroundSecondary)
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                     .accessibilityHint("Required before continuing")
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 20)
+                .padding(.top, 16)
                 .padding(.bottom, 12)
             }
-            .background(
-                UnevenRoundedRectangle(topLeadingRadius: 28, topTrailingRadius: 28)
-                    .fill(Color.mcBackgroundSecondary.opacity(0.5))
-            )
         }
     }
 }

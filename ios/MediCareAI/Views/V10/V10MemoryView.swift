@@ -136,11 +136,7 @@ struct V10MemoryView: View {
         VStack(spacing: 16) {
             Spacer()
 
-            Image("v10-empty")
-                .resizable()
-                .scaledToFit()
-                .frame(maxWidth: 200, maxHeight: 200)
-                .accessibilityHidden(true)
+            ImagePlate(name: "v10-empty", maxSize: 180)
 
             Text("Your Health Profile")
                 .font(.title3)

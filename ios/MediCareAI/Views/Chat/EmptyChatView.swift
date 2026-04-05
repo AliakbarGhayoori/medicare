@@ -16,11 +16,7 @@ struct EmptyChatView: View {
             Spacer(minLength: 40)
 
             VStack(spacing: 14) {
-                Image("empty-chat")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(maxWidth: 140, maxHeight: 140)
-                    .accessibilityHidden(true)
+                ImagePlate(name: "empty-chat", maxSize: 120)
 
                 Text(greeting)
                     .font(.title3)

@@ -14,19 +14,6 @@ struct OnboardingView: View {
         ZStack {
             Color.mcBackground.ignoresSafeArea()
 
-            // Soft ambient glow
-            Circle()
-                .fill(
-                    RadialGradient(
-                        colors: [Color.mcAccent.opacity(0.08), Color.clear],
-                        center: .center,
-                        startRadius: 40,
-                        endRadius: 300
-                    )
-                )
-                .frame(width: 500, height: 500)
-                .offset(y: -120)
-
             VStack(spacing: 0) {
                 TabView(selection: $page) {
                     welcomePage.tag(0)
@@ -38,7 +25,6 @@ struct OnboardingView: View {
 
                 // Bottom dock: progress + CTA
                 VStack(spacing: 16) {
-                    // Progress capsules
                     HStack(spacing: 6) {
                         ForEach(0..<totalPages, id: \.self) { index in
                             Capsule()
@@ -81,19 +67,23 @@ struct OnboardingView: View {
         .onAppear { startedAt = Date() }
     }
 
-    // MARK: - Page 1: Welcome
+    // MARK: - Page 1: Welcome (heroFullBleed)
 
     private var welcomePage: some View {
         VStack(spacing: 0) {
-            // Hero zone
+            // Full-bleed hero — image fills the zone edge to edge
             Image("onboarding-welcome")
                 .resizable()
-                .scaledToFit()
-                .frame(maxWidth: 260, maxHeight: 220)
+                .scaledToFill()
+                .frame(maxWidth: .infinity)
+                .frame(height: 260)
+                .clipped()
+                .clipShape(UnevenRoundedRectangle(
+                    bottomLeadingRadius: 24, bottomTrailingRadius: 24
+                ))
                 .accessibilityHidden(true)
-                .padding(.top, 60)
 
-            Spacer(minLength: 16)
+            Spacer(minLength: 12)
 
             // Content dock
             VStack(spacing: 14) {
@@ -117,27 +107,27 @@ struct OnboardingView: View {
                 .padding(.top, 4)
             }
             .padding(.horizontal, 24)
-            .padding(.vertical, 24)
-            .frame(maxWidth: .infinity)
-            .background(
-                UnevenRoundedRectangle(topLeadingRadius: 28, topTrailingRadius: 28)
-                    .fill(Color.mcBackgroundSecondary.opacity(0.5))
-            )
+
+            Spacer(minLength: 12)
         }
     }
 
-    // MARK: - Page 2: Personalization
+    // MARK: - Page 2: Personalization (heroFullBleed)
 
     private var personalizedPage: some View {
         VStack(spacing: 0) {
             Image("onboarding-personalized")
                 .resizable()
-                .scaledToFit()
-                .frame(maxWidth: 220, maxHeight: 200)
+                .scaledToFill()
+                .frame(maxWidth: .infinity)
+                .frame(height: 260)
+                .clipped()
+                .clipShape(UnevenRoundedRectangle(
+                    bottomLeadingRadius: 24, bottomTrailingRadius: 24
+                ))
                 .accessibilityHidden(true)
-                .padding(.top, 60)
 
-            Spacer(minLength: 16)
+            Spacer(minLength: 12)
 
             VStack(spacing: 14) {
                 EyebrowChip(text: "More helpful over time")
@@ -164,12 +154,8 @@ struct OnboardingView: View {
                     .foregroundStyle(Color.mcTextSecondary)
             }
             .padding(.horizontal, 24)
-            .padding(.vertical, 24)
-            .frame(maxWidth: .infinity)
-            .background(
-                UnevenRoundedRectangle(topLeadingRadius: 28, topTrailingRadius: 28)
-                    .fill(Color.mcBackgroundSecondary.opacity(0.5))
-            )
+
+            Spacer(minLength: 12)
         }
     }
 
@@ -218,7 +204,31 @@ struct ProofChip: View {
             .foregroundStyle(Color.mcTextSecondary)
             .padding(.horizontal, 10)
             .padding(.vertical, 5)
-            .background(Color.mcBackgroundSecondary.opacity(0.6))
+            .background(Color.mcBackgroundSecondary)
             .clipShape(Capsule())
+    }
+}
+
+/// Tinted plate container for supportPlate images (3, 4, 5, 8)
+struct ImagePlate: View {
+    let name: String
+    var maxSize: CGFloat = 160
+
+    var body: some View {
+        Image(name)
+            .resizable()
+            .scaledToFit()
+            .frame(maxWidth: maxSize, maxHeight: maxSize)
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(Color.mcBackgroundSecondary)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .stroke(Color.mcDivider, lineWidth: 0.5)
+                    )
+                    .shadow(color: .black.opacity(0.04), radius: 8, y: 4)
+            )
+            .accessibilityHidden(true)
     }
 }
