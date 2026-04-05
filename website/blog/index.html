@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Health Articles | MediCare AI Blog</title>
+    <meta name="description" content="Evidence-based health articles for older adults and caregivers. Clear answers to common health questions, backed by citations from Mayo Clinic, Cleveland Clinic, and NIH.">
+    <link rel="canonical" href="https://mediguide.co/blog/">
+    <meta name="apple-itunes-app" content="app-id=6760784979">
+    <meta name="theme-color" content="#1B2B4B">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://mediguide.co/blog/">
+    <meta property="og:title" content="Health Articles | MediCare AI Blog">
+    <meta property="og:description" content="Evidence-based health articles for older adults and caregivers. Clear answers backed by real medical sources.">
+    <meta property="og:image" content="https://mediguide.co/logo.png">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Health Articles | MediCare AI Blog">
+    <meta name="twitter:description" content="Evidence-based health articles for older adults and caregivers.">
+    <meta name="twitter:image" content="https://mediguide.co/logo.png">
+    <link rel="icon" type="image/png" href="/logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300..700;1,9..40,300..700&display=swap" rel="stylesheet">
+    <style>
+        *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+        :root {
+            --navy: #1B2B4B;
+            --coral: #D4806E;
+            --coral-soft: #E8917A;
+            --coral-pale: #F2C4B8;
+            --warm-white: #FAFAF8;
+            --warm-gray: #F3F1EE;
+            --text: #1B2B4B;
+            --text-secondary: #5A6578;
+            --text-light: #8A91A0;
+            --border: #E4E1DC;
+        }
+        html { scroll-behavior: smooth }
+        body {
+            font-family: 'DM Sans', -apple-system, sans-serif;
+            color: var(--text);
+            background: var(--warm-white);
+            -webkit-font-smoothing: antialiased;
+            line-height: 1.7;
+        }
+
+        /* NAV */
+        nav {
+            position: sticky; top: 0; z-index: 100;
+            background: rgba(250,250,248,0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            padding: 14px 0;
+        }
+        .nav-inner {
+            max-width: 900px; margin: 0 auto; padding: 0 24px;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .nav-brand {
+            display: flex; align-items: center; gap: 10px;
+            text-decoration: none; color: var(--navy);
+        }
+        .nav-brand img { width: 32px; height: 32px; border-radius: 8px }
+        .nav-brand span { font-family: 'Instrument Serif', serif; font-size: 1.2rem }
+        .nav-links { display: flex; gap: 24px; align-items: center }
+        .nav-links a {
+            text-decoration: none; color: var(--text-secondary);
+            font-size: 0.88rem; font-weight: 500; transition: color 0.2s;
+        }
+        .nav-links a:hover { color: var(--navy) }
+
+        /* HEADER */
+        .blog-header {
+            max-width: 900px; margin: 0 auto; padding: 56px 24px 40px;
+        }
+        .blog-header h1 {
+            font-family: 'Instrument Serif', serif;
+            font-size: clamp(2rem, 4vw, 2.6rem);
+            line-height: 1.15; letter-spacing: -0.02em;
+            margin-bottom: 12px;
+        }
+        .blog-header p {
+            font-size: 1.05rem; color: var(--text-secondary);
+            max-width: 600px;
+        }
+
+        /* ARTICLE GRID */
+        .articles {
+            max-width: 900px; margin: 0 auto; padding: 0 24px 80px;
+            display: grid; grid-template-columns: 1fr; gap: 32px;
+        }
+        .article-card {
+            display: grid; grid-template-columns: 280px 1fr; gap: 28px;
+            text-decoration: none; color: inherit;
+            background: white; border-radius: 16px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .article-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 32px rgba(27,43,75,0.08);
+        }
+        .article-card img {
+            width: 100%; height: 100%; object-fit: cover;
+            min-height: 200px;
+        }
+        .article-card-body {
+            padding: 24px 24px 24px 0;
+            display: flex; flex-direction: column; justify-content: center;
+        }
+        .article-card-meta {
+            font-size: 0.8rem; color: var(--text-light);
+            margin-bottom: 8px; display: flex; gap: 12px;
+        }
+        .article-card-body h2 {
+            font-family: 'Instrument Serif', serif;
+            font-size: 1.35rem; line-height: 1.25;
+            letter-spacing: -0.01em; margin-bottom: 10px;
+        }
+        .article-card-body p {
+            font-size: 0.92rem; color: var(--text-secondary);
+            line-height: 1.6; margin-bottom: 14px;
+        }
+        .article-card-sources {
+            font-size: 0.78rem; color: var(--text-light);
+        }
+
+        /* CTA BANNER */
+        .blog-cta {
+            max-width: 900px; margin: 0 auto; padding: 0 24px 80px;
+        }
+        .blog-cta-inner {
+            background: var(--navy); color: white;
+            border-radius: 20px; padding: 40px 36px;
+            text-align: center;
+        }
+        .blog-cta-inner h2 {
+            font-family: 'Instrument Serif', serif;
+            font-size: 1.5rem; margin-bottom: 10px; color: white;
+        }
+        .blog-cta-inner p {
+            color: rgba(255,255,255,0.7); font-size: 0.95rem;
+            max-width: 500px; margin: 0 auto 24px;
+        }
+        .cta-btn {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: var(--coral); color: white;
+            padding: 14px 28px; border-radius: 12px;
+            text-decoration: none; font-weight: 600; font-size: 1rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .cta-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 24px rgba(212,128,110,0.4);
+        }
+
+        /* FOOTER */
+        footer {
+            border-top: 1px solid var(--border); padding: 32px 0;
+            text-align: center;
+        }
+        .footer-inner {
+            max-width: 900px; margin: 0 auto; padding: 0 24px;
+        }
+        .footer-links { display: flex; gap: 24px; justify-content: center; flex-wrap: wrap }
+        .footer-links a {
+            text-decoration: none; color: var(--text-secondary);
+            font-size: 0.85rem; transition: color 0.2s;
+        }
+        .footer-links a:hover { color: var(--navy) }
+        .footer-copy {
+            font-size: 0.78rem; color: var(--text-light); margin-top: 16px;
+        }
+
+        @media (max-width: 700px) {
+            .article-card {
+                grid-template-columns: 1fr;
+            }
+            .article-card img { min-height: 180px; max-height: 220px; }
+            .article-card-body { padding: 20px; }
+            .blog-header { padding: 40px 24px 28px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav>
+    <div class="nav-inner">
+        <a href="/" class="nav-brand">
+            <img src="/logo.png" alt="MediCare AI">
+            <span>MediCare AI</span>
+        </a>
+        <div class="nav-links">
+            <a href="/">Home</a>
+            <a href="/blog/">Blog</a>
+            <a href="https://apps.apple.com/app/id6760784979">Download</a>
+        </div>
+    </div>
+</nav>
+
+<div class="blog-header">
+    <h1>Health Articles</h1>
+    <p>Clear, evidence-based answers to common health questions. Every article is backed by citations from trusted medical sources.</p>
+</div>
+
+<div class="articles">
+    <a class="article-card" href="/blog/why-do-i-feel-dizzy-when-i-stand-up">
+        <img src="/blog/images/dizzy-when-standing-hero.jpg" alt="Illustration of an older adult experiencing brief lightheadedness when standing">
+        <div class="article-card-body">
+            <div class="article-card-meta">
+                <span>April 3, 2026</span>
+                <span>8 min read</span>
+            </div>
+            <h2>Why Do I Feel Dizzy When I Stand Up?</h2>
+            <p>Common causes including dehydration and blood pressure medication, what to do right away, and when to seek medical help.</p>
+            <div class="article-card-sources">Sources: Mayo Clinic, Cleveland Clinic, AAFP, MedlinePlus</div>
+        </div>
+    </a>
+</div>
+
+<div class="blog-cta">
+    <div class="blog-cta-inner">
+        <h2>Have a health question?</h2>
+        <p>MediCare AI searches trusted medical sources and gives you a personalized, citation-backed answer.</p>
+        <a href="https://apps.apple.com/app/id6760784979" class="cta-btn">Download MediCare AI</a>
+    </div>
+</div>
+
+<footer>
+    <div class="footer-inner">
+        <div class="footer-links">
+            <a href="/">Home</a>
+            <a href="/blog/">Blog</a>
+            <a href="/privacy">Privacy Policy</a>
+            <a href="/terms">Terms of Service</a>
+            <a href="mailto:support@mediguide.co">Contact</a>
+        </div>
+        <p class="footer-copy">&copy; 2026 MediCare AI. All rights reserved.</p>
+    </div>
+</footer>
+
+</body>
+</html>
