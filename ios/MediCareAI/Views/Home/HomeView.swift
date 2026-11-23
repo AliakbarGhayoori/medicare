@@ -1,304 +1,251 @@
 import SwiftUI
 
+/// The first screen: a greeting, one big field to ask in, topics to start from and the
+/// latest chats. The local emergency number is always in the corner.
 struct HomeView: View {
+    @EnvironmentObject private var context: AppContext
     @EnvironmentObject private var authViewModel: AuthViewModel
-    @EnvironmentObject private var chatViewModel: ChatViewModel
     @EnvironmentObject private var conversationListViewModel: ConversationListViewModel
-    @EnvironmentObject private var v10ViewModel: V10ViewModel
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
-    @State private var navigateToChat = false
-    @State private var pendingMessage: String?
-    @State private var showAllConversations = false
-
-    private let quickActions: [(icon: String, label: String, prompt: String)] = [
-        ("waveform.path.ecg", "Check a symptom", "I've been experiencing "),
-        ("pills.fill", "Medication question", "I want to ask about my medication: "),
-        ("figure.run", "Exercise plan", "Can you suggest an exercise plan for me?"),
-        ("fork.knife", "Nutrition advice", "What foods would be good for me?"),
-        ("moon.zzz.fill", "Sleep help", "I've been having trouble sleeping. "),
-        ("heart.text.square", "Understand a condition", "Can you explain what this condition means: ")
-    ]
+    @StateObject private var speech = SpeechInput()
+    @State private var question = ""
+    @State private var route: ChatRoute?
+    @State private var showsAllChats = false
+    @FocusState private var askFocused: Bool
 
     var body: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 24) {
-                greetingSection
-                mainCTACard
-                quickActionsSection
-                profileSummaryCard
-                recentConversationsSection
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                TimelineView(.everyMinute) { timeline in
+                    VStack(alignment: .leading, spacing: 14) {
+                        header(date: timeline.date)
+                        greeting(date: timeline.date)
+                    }
+                }
+
+                askField
+                    .padding(.top, 20)
+
+                Text("Every answer names its sources.")
+                    .font(.subheadline)
+                    .foregroundStyle(Color.mcInk2)
+                    .padding(.top, 8)
+                    .padding(.leading, 18)
+
+                if let problem = speech.problem {
+                    Text(problem)
+                        .font(.footnote)
+                        .foregroundStyle(Color.mcInk2)
+                        .padding(.top, 6)
+                        .padding(.leading, 18)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                SectionHeading(text: "Start with a topic")
+                    .padding(.top, 28)
+                    .padding(.bottom, 10)
+                topics
+
+                recentChats
+                    .padding(.top, 28)
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 16)
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
             .padding(.bottom, 32)
         }
-        .background(
-            LinearGradient(
-                colors: [Color.mcBackground, Color.mcBackgroundSecondary.opacity(0.4)],
-                startPoint: .top,
-                endPoint: .bottom
+        .scrollDismissesKeyboard(.interactively)
+        .mcScreenBackground()
+        .accessibilityIdentifier("screen.home")
+        .navigationTitle("Home")
+        .toolbar(.hidden, for: .navigationBar)
+        .navigationDestination(item: $route) { route in
+            ChatView(
+                viewModel: context.makeChatViewModel(),
+                conversation: route.conversation,
+                starter: route.starter
             )
-            .overlay(alignment: .topTrailing) {
-                Circle()
-                    .fill(Color.mcAccent.opacity(0.06))
-                    .frame(width: 260, height: 260)
-                    .offset(x: 80, y: -100)
-            }
-            .ignoresSafeArea()
-        )
-        .navigationTitle("MediCare AI")
-        .navigationBarTitleDisplayMode(.large)
-        .navigationDestination(isPresented: $navigateToChat) {
-            ChatView(conversation: nil, initialMessage: pendingMessage)
-                .onAppear { chatViewModel.startNewConversation() }
         }
-        .navigationDestination(isPresented: $showAllConversations) {
+        .navigationDestination(isPresented: $showsAllChats) {
             ConversationListView()
         }
         .task {
             await conversationListViewModel.loadInitial()
-            await v10ViewModel.load()
         }
         .refreshable {
             await conversationListViewModel.loadInitial()
-            await v10ViewModel.load()
         }
-    }
-
-    // MARK: - Greeting
-
-    private var greetingSection: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(timeGreeting)
-                .font(.title2.weight(.bold))
-                .foregroundStyle(Color.mcTextPrimary)
-
-            Text("How are you feeling today?")
-                .font(.body)
-                .foregroundStyle(Color.mcTextSecondary)
-        }
-        .padding(.top, 8)
-    }
-
-    private var timeGreeting: String {
-        let hour = Calendar.current.component(.hour, from: .now)
-        let name = userName
-
-        if hour < 12 {
-            return "Good morning, \(name)"
-        } else if hour < 17 {
-            return "Good afternoon, \(name)"
-        } else {
-            return "Good evening, \(name)"
-        }
-    }
-
-    private var userName: String {
-        guard let email = authViewModel.currentEmail else { return "there" }
-        let local = email.components(separatedBy: "@").first ?? "there"
-        return local.capitalized
-    }
-
-    // MARK: - Main CTA
-
-    private var mainCTACard: some View {
-        Button {
-            pendingMessage = nil
-            navigateToChat = true
-        } label: {
-            VStack(spacing: 16) {
-                Image("home-hero")
-                    .resizable()
-                    .scaledToFill()
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 120)
-                    .clipped()
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .accessibilityHidden(true)
-
-                VStack(spacing: 6) {
-                    Text("Talk to MediCare AI")
-                        .font(.headline)
-                        .foregroundStyle(Color.mcTextPrimary)
-                    Text("Ask anything about your health")
-                        .font(.subheadline)
-                        .foregroundStyle(Color.mcTextSecondary)
-                }
-
-                Image(systemName: "arrow.right.circle.fill")
-                    .font(.title2)
-                    .foregroundStyle(Color.mcAccent)
+        .onChange(of: speech.transcript) { _, text in
+            if !text.isEmpty {
+                question = text
             }
-            .padding(20)
-            .background(Color.mcBackgroundSecondary.opacity(0.7))
-            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .onDisappear {
+            speech.stop()
+        }
     }
 
-    // MARK: - Quick Actions
+    // MARK: - Top
 
-    private var quickActionsSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Quick start")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(Color.mcTextSecondary)
+    private func header(date: Date) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            Text(date, format: .dateTime.weekday(.wide).day().month(.wide))
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(Color.mcInk2)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+            Spacer(minLength: 8)
+            EmergencyPill(number: EmergencyNumber.current)
+        }
+    }
 
-            LazyVGrid(columns: [
-                GridItem(.flexible(), spacing: 10),
-                GridItem(.flexible(), spacing: 10)
-            ], spacing: 10) {
-                ForEach(quickActions, id: \.label) { action in
-                    Button {
-                        pendingMessage = action.prompt
-                        navigateToChat = true
-                    } label: {
-                        HStack(spacing: 10) {
-                            Image(systemName: action.icon)
-                                .font(.callout)
-                                .foregroundStyle(Color.mcAccent)
-                                .frame(width: 24)
+    private func greeting(date: Date) -> some View {
+        let hour = Calendar.current.component(.hour, from: date)
+        let base = Greeting.text(hour: hour, firstName: nil)
+        let name = Greeting.cleanedFirstName(authViewModel.firstName)
+        return VStack(alignment: .leading, spacing: 2) {
+            Text(name == nil ? base : base + ",")
+            HStack(alignment: .lastTextBaseline, spacing: 10) {
+                if let name {
+                    Text(name)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                }
+                HeartbeatLine(variant: .flourish, lineWidth: 2.5, drawsIn: true)
+                    .frame(width: 96, height: 22)
+                    .alignmentGuide(.lastTextBaseline) { dimensions in dimensions[.bottom] - 4 }
+            }
+        }
+        .font(.mcDisplay(40, relativeTo: .largeTitle))
+        .foregroundStyle(Color.mcInk)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Greeting.text(hour: hour, firstName: authViewModel.firstName))
+        .accessibilityAddTraits(.isHeader)
+        .accessibilityIdentifier("home.greeting")
+    }
 
-                            Text(action.label)
-                                .font(.callout)
-                                .foregroundStyle(Color.mcTextPrimary)
-                                .lineLimit(1)
+    // MARK: - Ask
 
-                            Spacer()
-                        }
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 13)
-                        .background(Color.mcBackgroundSecondary.opacity(0.6))
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    private var askField: some View {
+        Composer(
+            text: $question,
+            placeholder: "Ask a health question",
+            isBusy: false,
+            isListening: speech.isListening,
+            focus: $askFocused,
+            idPrefix: "home",
+            raised: true,
+            onSend: ask,
+            onMic: { Task { await speech.toggle() } }
+        )
+    }
+
+    private func ask() {
+        let text = question.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        speech.stop()
+        askFocused = false
+        question = ""
+        route = ChatRoute(starter: .question(text))
+    }
+
+    // MARK: - Topics
+
+    private var topics: some View {
+        let columns = dynamicTypeSize.isAccessibilitySize
+            ? [GridItem(.flexible())]
+            : [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)]
+        return LazyVGrid(columns: columns, spacing: 10) {
+            ForEach(ChatTopic.all) { topic in
+                Button {
+                    route = ChatRoute(starter: .topic(topic))
+                } label: {
+                    VStack(alignment: .leading, spacing: 12) {
+                        IconTile(systemName: topic.systemImage, color: topic.tint, size: 30)
+                        Text(topic.title)
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(Color.mcInk)
+                            .multilineTextAlignment(.leading)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
-                    .buttonStyle(.plain)
+                    .padding(14)
+                    .frame(maxWidth: .infinity, minHeight: 92, alignment: .topLeading)
+                    .background(Color.mcSurface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .strokeBorder(Color.mcLine.opacity(0.7), lineWidth: 0.5)
+                    )
+                    .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel(topic.title)
+                .accessibilityHint("Opens a new chat with example questions")
+                .accessibilityIdentifier("home.topic.\(topic.id)")
             }
         }
     }
 
-    // MARK: - Profile Summary
+    // MARK: - Recent
 
     @ViewBuilder
-    private var profileSummaryCard: some View {
-        if let digest = v10ViewModel.digest, let text = digest.digest, !text.isEmpty {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Label("Your health profile", systemImage: "heart.text.square.fill")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Color.mcTextSecondary)
-                    Spacer()
-                    NavigationLink {
-                        V10MemoryView()
-                    } label: {
-                        Text("View")
-                            .font(.caption.weight(.medium))
-                            .foregroundStyle(Color.mcAccent)
-                    }
-                }
-
-                Text(profilePreview(text))
-                    .font(.callout)
-                    .foregroundStyle(Color.mcTextPrimary)
-                    .lineLimit(3)
-                    .lineSpacing(2)
-            }
-            .padding(16)
-            .background(Color.mcBackgroundSecondary.opacity(0.6))
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        } else if !v10ViewModel.isLoading {
-            VStack(alignment: .leading, spacing: 10) {
-                Label("Build your health profile", systemImage: "heart.text.square")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Color.mcTextPrimary)
-
-                Text("Start a conversation and your conditions, medications, and concerns will be remembered automatically.")
-                    .font(.callout)
-                    .foregroundStyle(Color.mcTextSecondary)
-                    .lineSpacing(2)
-            }
-            .padding(16)
-            .background(Color.mcBackgroundSecondary.opacity(0.6))
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        }
-    }
-
-    private func profilePreview(_ text: String) -> String {
-        let lines = text.components(separatedBy: .newlines)
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty && !$0.hasPrefix("#") }
-
-        let preview = lines.prefix(4).joined(separator: "\n")
-        if preview.count > 200 {
-            return String(preview.prefix(200)) + "..."
-        }
-        return preview
-    }
-
-    // MARK: - Recent Conversations
-
-    @ViewBuilder
-    private var recentConversationsSection: some View {
+    private var recentChats: some View {
         let recent = Array(conversationListViewModel.conversations.prefix(3))
-
         if !recent.isEmpty {
-            VStack(alignment: .leading, spacing: 14) {
-                HStack {
-                    Text("Recent conversations")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Color.mcTextSecondary)
-                    Spacer()
-                    if conversationListViewModel.conversations.count > 3 {
-                        Button {
-                            showAllConversations = true
-                        } label: {
-                            Text("See all")
-                                .font(.caption.weight(.medium))
-                                .foregroundStyle(Color.mcAccent)
-                        }
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .firstTextBaseline) {
+                    SectionHeading(text: "Recent")
+                    Button("See all") {
+                        showsAllChats = true
                     }
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(Color.mcBlueText)
+                    .frame(minHeight: 44)
+                    .accessibilityLabel("See all chats")
+                    .accessibilityIdentifier("home.seeAll")
                 }
 
-                VStack(spacing: 6) {
-                    ForEach(recent) { conversation in
-                        NavigationLink {
-                            ChatView(conversation: conversation)
+                VStack(spacing: 0) {
+                    ForEach(Array(recent.enumerated()), id: \.element.id) { index, conversation in
+                        if index > 0 {
+                            Divider()
+                                .overlay(Color.mcLine)
+                                .padding(.leading, 16)
+                        }
+                        Button {
+                            route = ChatRoute(conversation: conversation)
                         } label: {
-                            HStack(spacing: 12) {
-                                Circle()
-                                    .fill(Color.mcAccent.opacity(0.1))
-                                    .frame(width: 34, height: 34)
-                                    .overlay(
-                                        Image(systemName: "message.fill")
-                                            .font(.caption2)
-                                            .foregroundStyle(Color.mcAccent)
-                                    )
-
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(conversation.title)
-                                        .font(.callout.weight(.medium))
-                                        .foregroundStyle(Color.mcTextPrimary)
-                                        .lineLimit(1)
-
-                                    Text(conversation.lastMessage)
-                                        .font(.caption)
-                                        .foregroundStyle(Color.mcTextSecondary)
-                                        .lineLimit(1)
-                                }
-
-                                Spacer()
-
+                            HStack(spacing: 10) {
+                                Text(conversation.title)
+                                    .font(.body.weight(.medium))
+                                    .foregroundStyle(Color.mcInk)
+                                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 1)
+                                    .multilineTextAlignment(.leading)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                Text(DateFormatting.chatDay(conversation.updatedAt))
+                                    .font(.subheadline)
+                                    .foregroundStyle(Color.mcInk2)
                                 Image(systemName: "chevron.right")
-                                    .font(.caption2.weight(.semibold))
-                                    .foregroundStyle(Color.mcTextSecondary.opacity(0.4))
+                                    .font(.footnote.weight(.semibold))
+                                    .foregroundStyle(Color.mcInk2)
+                                    .accessibilityHidden(true)
                             }
-                            .padding(12)
-                            .background(Color.mcBackgroundSecondary.opacity(0.5))
-                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
+                            .frame(minHeight: 50)
+                            .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
+                        .accessibilityElement(children: .combine)
+                        .accessibilityHint("Opens this chat")
+                        .accessibilityIdentifier("home.recent.\(index)")
                     }
                 }
+                .background(Color.mcSurface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .strokeBorder(Color.mcLine.opacity(0.7), lineWidth: 0.5)
+                )
             }
         }
     }

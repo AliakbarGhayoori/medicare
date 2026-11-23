@@ -8,7 +8,10 @@ struct Composer: View {
     var isBusy: Bool
     var isListening: Bool
     var focus: FocusState<Bool>.Binding
-    var fieldIdentifier = "chat.input"
+    /// "chat" gives the identifiers chat.input, chat.send and chat.mic.
+    var idPrefix = "chat"
+    /// A white field with a soft shadow, for the paper background on Home.
+    var raised = false
     let onSend: () -> Void
     let onMic: () -> Void
 
@@ -28,8 +31,16 @@ struct Composer: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
                 .frame(minHeight: buttonSize)
-                .background(Color.mcField, in: RoundedRectangle(cornerRadius: buttonSize / 2, style: .continuous))
-                .accessibilityIdentifier(fieldIdentifier)
+                .background(
+                    raised ? Color.mcSurface : Color.mcField,
+                    in: RoundedRectangle(cornerRadius: buttonSize / 2, style: .continuous)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: buttonSize / 2, style: .continuous)
+                        .strokeBorder(Color.mcLine, lineWidth: raised ? 0.5 : 1)
+                )
+                .shadow(color: Color.mcInk.opacity(raised ? 0.12 : 0), radius: 12, y: 6)
+                .accessibilityIdentifier("\(idPrefix).input")
 
             if hasText && !isListening {
                 Button(action: onSend) {
@@ -44,9 +55,9 @@ struct Composer: View {
                 .disabled(isBusy)
                 .accessibilityLabel("Send")
                 .accessibilityHint(isBusy ? "Wait for the answer to finish" : "Sends your question")
-                .accessibilityIdentifier("chat.send")
+                .accessibilityIdentifier("\(idPrefix).send")
             } else {
-                MicButton(isListening: isListening, size: buttonSize, action: onMic)
+                MicButton(isListening: isListening, size: buttonSize, identifier: "\(idPrefix).mic", action: onMic)
             }
         }
     }
@@ -56,6 +67,7 @@ struct Composer: View {
 struct MicButton: View {
     let isListening: Bool
     let size: CGFloat
+    var identifier = "chat.mic"
     let action: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -72,16 +84,16 @@ struct MicButton: View {
                 }
                 Image(systemName: isListening ? "stop.fill" : "mic.fill")
                     .font(.title3.weight(.semibold))
-                    .foregroundStyle(isListening ? Color.white : Color.mcBlueText)
+                    .foregroundStyle(.white)
                     .frame(width: size, height: size)
-                    .background(isListening ? Color.mcBlue : Color.mcBlueTint, in: Circle())
+                    .background(Color.mcBlue, in: Circle())
             }
             .frame(width: size, height: size)
             .contentShape(Circle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(isListening ? "Stop listening" : "Ask by talking")
-        .accessibilityIdentifier("chat.mic")
+        .accessibilityIdentifier(identifier)
         .onAppear { startPulseIfNeeded() }
         .onChange(of: isListening) { _, _ in startPulseIfNeeded() }
     }

@@ -1,82 +1,97 @@
 import SwiftUI
 
+/// Every chat, newest first, as an inset grouped list.
 struct ConversationListView: View {
+    @EnvironmentObject private var context: AppContext
     @EnvironmentObject private var conversationListViewModel: ConversationListViewModel
-    @EnvironmentObject private var chatViewModel: ChatViewModel
 
-    @State private var pendingSuggestion: String?
-    @State private var navigateToNewChat = false
+    @State private var route: ChatRoute?
 
     var body: some View {
         List {
-            NavigationLink {
-                ChatView(conversation: nil)
-                    .onAppear { chatViewModel.startNewConversation() }
-            } label: {
-                Label("Start New Chat", systemImage: "plus.circle.fill")
-                    .font(.headline)
-            }
-            .accessibilityHint("Starts a new conversation")
-            .accessibilityIdentifier("chat.newConversation")
-
-            ForEach(conversationListViewModel.conversations) { conversation in
-                NavigationLink {
-                    ChatView(conversation: conversation)
+            Section {
+                Button {
+                    route = ChatRoute()
                 } label: {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(conversation.title)
-                            .font(.headline)
-                            .lineLimit(1)
-                        Text(conversation.lastMessage)
-                            .font(.callout)
-                            .foregroundStyle(Color.mcTextSecondary)
-                            .lineLimit(2)
+                    Label {
+                        Text("New chat")
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(Color.mcBlueText)
+                    } icon: {
+                        IconTile(systemName: "square.and.pencil", color: .tileBlue)
                     }
-                    .padding(.vertical, 6)
                 }
-                .accessibilityLabel(conversation.title)
-                .accessibilityHint("Opens conversation")
-                .task {
-                    await conversationListViewModel.loadMoreIfNeeded(current: conversation)
+                .frame(minHeight: 44)
+                .accessibilityHint("Starts a new chat")
+                .accessibilityIdentifier("chat.newConversation")
+            }
+
+            if !conversationListViewModel.conversations.isEmpty {
+                Section {
+                    ForEach(conversationListViewModel.conversations) { conversation in
+                        Button {
+                            route = ChatRoute(conversation: conversation)
+                        } label: {
+                            row(for: conversation)
+                        }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityHint("Opens this chat")
+                        .task {
+                            await conversationListViewModel.loadMoreIfNeeded(current: conversation)
+                        }
+                    }
                 }
             }
 
             if conversationListViewModel.isLoading {
                 HStack {
                     Spacer()
-                    ProgressView()
+                    HeartbeatActivity()
                     Spacer()
                 }
+                .listRowBackground(Color.clear)
             }
 
             if let errorMessage = conversationListViewModel.errorMessage {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(errorMessage)
-                        .font(.callout)
-                        .foregroundStyle(Color.mcEmergencyRed)
-                    Button("Try Again") {
-                        Task { await conversationListViewModel.loadInitial() }
+                Section {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text(errorMessage)
+                            .font(.body)
+                            .foregroundStyle(Color.mcInk)
+                        Button("Try again") {
+                            Task { await conversationListViewModel.loadInitial() }
+                        }
+                        .buttonStyle(SecondaryButtonStyle(tint: .mcBlueText))
                     }
-                    .buttonStyle(.bordered)
+                    .padding(.vertical, 6)
                 }
-                .padding(.vertical, 6)
             }
         }
-        .navigationTitle("Chat")
+        .listStyle(.insetGrouped)
+        .scrollContentBackground(.hidden)
+        .mcScreenBackground()
+        .accessibilityIdentifier("screen.pastChats")
+        .navigationTitle("Past chats")
+        .navigationBarTitleDisplayMode(.large)
         .overlay {
-            if conversationListViewModel.conversations.isEmpty && !conversationListViewModel.isLoading {
-                VStack(spacing: 20) {
-                    EmptyChatView { suggestion in
-                        pendingSuggestion = suggestion
-                        navigateToNewChat = true
-                    }
-                }
-                .padding(.bottom, 60)
+            if conversationListViewModel.conversations.isEmpty
+                && !conversationListViewModel.isLoading
+                && conversationListViewModel.errorMessage == nil {
+                ContentUnavailableView(
+                    "No chats yet",
+                    systemImage: "bubble.left.and.bubble.right",
+                    description: Text("Your questions and answers will show here.")
+                )
+                .foregroundStyle(Color.mcInk2)
+                .padding(.top, 80)
             }
         }
-        .navigationDestination(isPresented: $navigateToNewChat) {
-            ChatView(conversation: nil, initialMessage: pendingSuggestion)
-                .onAppear { chatViewModel.startNewConversation() }
+        .navigationDestination(item: $route) { route in
+            ChatView(
+                viewModel: context.makeChatViewModel(),
+                conversation: route.conversation,
+                starter: route.starter
+            )
         }
         .task {
             await conversationListViewModel.loadInitial()
@@ -84,5 +99,36 @@ struct ConversationListView: View {
         .refreshable {
             await conversationListViewModel.loadInitial()
         }
+    }
+
+    private func row(for conversation: Conversation) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(conversation.title)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(Color.mcInk)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+                let preview = ChatPreview.text(conversation.lastMessage)
+                if !preview.isEmpty {
+                    Text(preview)
+                        .font(.subheadline)
+                        .foregroundStyle(Color.mcInk2)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            Text(DateFormatting.chatDay(conversation.updatedAt))
+                .font(.subheadline)
+                .foregroundStyle(Color.mcInk2)
+            Image(systemName: "chevron.right")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Color.mcInk2)
+                .padding(.top, 3)
+                .accessibilityHidden(true)
+        }
+        .padding(.vertical, 4)
+        .contentShape(Rectangle())
     }
 }
