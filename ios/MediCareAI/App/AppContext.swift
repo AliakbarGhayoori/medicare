@@ -14,7 +14,6 @@ final class AppContext: ObservableObject {
     let analyticsService: AnalyticsService
 
     let authViewModel: AuthViewModel
-    let chatViewModel: ChatViewModel
     let conversationListViewModel: ConversationListViewModel
     let v10ViewModel: V10ViewModel
     let settingsViewModel: SettingsViewModel
@@ -49,7 +48,6 @@ final class AppContext: ObservableObject {
         let authVM = AuthViewModel(authService: authService)
         self.authViewModel = authVM
 
-        self.chatViewModel = ChatViewModel(apiService: apiService, analytics: analyticsService)
         self.conversationListViewModel = ConversationListViewModel(
             apiService: apiService,
             analytics: analyticsService
@@ -59,5 +57,21 @@ final class AppContext: ObservableObject {
             apiService: apiService,
             analytics: analyticsService
         )
+
+        authVM.onSessionEnded = { [weak self] in
+            self?.resetSessionState()
+        }
+    }
+
+    /// Each chat screen gets its own view model, so two chats never mix.
+    func makeChatViewModel() -> ChatViewModel {
+        ChatViewModel(apiService: apiService, analytics: analyticsService)
+    }
+
+    /// Forgets everything shown for the account that signed out.
+    func resetSessionState() {
+        conversationListViewModel.reset()
+        v10ViewModel.reset()
+        settingsViewModel.reset()
     }
 }

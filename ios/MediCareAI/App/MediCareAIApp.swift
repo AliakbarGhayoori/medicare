@@ -9,7 +9,6 @@ struct MediCareAIApp: App {
             RootView()
                 .environmentObject(context)
                 .environmentObject(context.authViewModel)
-                .environmentObject(context.chatViewModel)
                 .environmentObject(context.conversationListViewModel)
                 .environmentObject(context.v10ViewModel)
                 .environmentObject(context.settingsViewModel)

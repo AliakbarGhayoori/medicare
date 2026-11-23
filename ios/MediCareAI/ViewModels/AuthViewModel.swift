@@ -10,8 +10,22 @@ final class AuthViewModel: ObservableObject {
         case unauthenticated
     }
 
-    @Published var state: AuthState = .loading
+    @Published var state: AuthState = .loading {
+        didSet {
+            if state == .unauthenticated, oldValue != .unauthenticated {
+                onSessionEnded?()
+            }
+            if state == .authenticated {
+                refreshFirstName()
+            }
+        }
+    }
     @Published var errorMessage: String?
+    /// The name to greet the person with; nil until they tell us.
+    @Published private(set) var firstName: String?
+
+    /// Called when the person signs out or the session ends, so every screen forgets the account.
+    var onSessionEnded: (@MainActor () -> Void)?
 
     private let logger = Logger(subsystem: "com.medicareai.app", category: "AuthViewModel")
     private let authService: AuthServicing
@@ -50,11 +64,14 @@ final class AuthViewModel: ObservableObject {
         }
     }
 
-    func signUp(email: String, password: String) async {
+    func signUp(email: String, password: String, firstName: String? = nil) async {
         errorMessage = nil
         logger.info("signUp started")
         do {
             _ = try await authService.signUp(email: email, password: password)
+            if let firstName, Greeting.cleanedFirstName(firstName) != nil {
+                await setFirstName(firstName)
+            }
             state = .authenticated
             logger.info("signUp completed and state=authenticated")
         } catch {
@@ -89,5 +106,22 @@ final class AuthViewModel: ObservableObject {
     
     var currentEmail: String? {
         authService.currentSession?.email
+    }
+
+    func refreshFirstName() {
+        guard let session = authService.currentSession else {
+            firstName = nil
+            return
+        }
+        firstName = NameStore.firstName(for: session.uid) ?? Greeting.cleanedFirstName(session.displayName)
+    }
+
+    func setFirstName(_ name: String) async {
+        guard let uid = authService.currentSession?.uid else { return }
+        NameStore.setFirstName(name, for: uid)
+        refreshFirstName()
+        if let cleaned = Greeting.cleanedFirstName(name) {
+            await authService.updateDisplayName(cleaned)
+        }
     }
 }

@@ -145,7 +145,6 @@ final class SSEClient {
                 continuation.finish()
             } catch {
                 sseLog.error("Failed to decode done payload: \(error, privacy: .public)")
-                sseLog.error("Raw data: \(data.prefix(500), privacy: .public)")
                 continuation.finish(throwing: APIError.invalidResponse)
             }
             return true

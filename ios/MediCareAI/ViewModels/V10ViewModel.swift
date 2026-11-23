@@ -19,6 +19,15 @@ final class V10ViewModel: ObservableObject {
         self.analytics = analytics
     }
 
+    /// Forgets the signed-out account's health profile.
+    func reset() {
+        digest = nil
+        editableDigest = ""
+        errorMessage = nil
+        noticeMessage = nil
+        isLoading = false
+    }
+
     func load() async {
         isLoading = true
         errorMessage = nil

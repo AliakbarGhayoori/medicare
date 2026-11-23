@@ -12,6 +12,7 @@ import FirebaseAuth
 struct AuthSession: Equatable {
     let uid: String
     let email: String?
+    var displayName: String? = nil
 }
 
 protocol AuthServicing {
@@ -22,6 +23,12 @@ protocol AuthServicing {
     func sendPasswordReset(email: String) async throws
     func signOut() throws
     func idToken() async throws -> String
+    /// Saves the name the person wants to be called with the account (best effort).
+    func updateDisplayName(_ name: String) async
+}
+
+extension AuthServicing {
+    func updateDisplayName(_ name: String) async {}
 }
 
 final class AuthService: AuthServicing {
@@ -42,7 +49,7 @@ final class AuthService: AuthServicing {
 
         #if canImport(FirebaseAuth)
         guard let user = Auth.auth().currentUser else { return nil }
-        return AuthSession(uid: user.uid, email: user.email)
+        return AuthSession(uid: user.uid, email: user.email, displayName: user.displayName)
         #else
         return mockSession
         #endif
@@ -56,7 +63,7 @@ final class AuthService: AuthServicing {
         #if canImport(FirebaseAuth)
         guard let user = Auth.auth().currentUser else { return nil }
         _ = try await user.getIDTokenResult()
-        return AuthSession(uid: user.uid, email: user.email)
+        return AuthSession(uid: user.uid, email: user.email, displayName: user.displayName)
         #else
         return mockSession
         #endif
@@ -75,7 +82,7 @@ final class AuthService: AuthServicing {
         do {
             let result = try await Auth.auth().signIn(withEmail: email, password: password)
             logger.info("signIn succeeded")
-            return AuthSession(uid: result.user.uid, email: result.user.email)
+            return AuthSession(uid: result.user.uid, email: result.user.email, displayName: result.user.displayName)
         } catch {
             logger.error("signIn failed: \(String(describing: error), privacy: .public)")
             throw error
@@ -148,6 +155,26 @@ final class AuthService: AuthServicing {
         return try await user.getIDToken()
         #else
         throw APIError.unauthorized
+        #endif
+    }
+
+    func updateDisplayName(_ name: String) async {
+        if environment.useMockAuth {
+            if let session = mockSession {
+                mockSession = AuthSession(uid: session.uid, email: session.email, displayName: name)
+            }
+            return
+        }
+
+        #if canImport(FirebaseAuth)
+        guard let user = Auth.auth().currentUser else { return }
+        let change = user.createProfileChangeRequest()
+        change.displayName = name
+        do {
+            try await change.commitChanges()
+        } catch {
+            logger.error("display name update failed")
+        }
         #endif
     }
 

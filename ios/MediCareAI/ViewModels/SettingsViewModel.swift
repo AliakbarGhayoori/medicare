@@ -16,6 +16,12 @@ final class SettingsViewModel: ObservableObject {
         self.analytics = analytics
     }
 
+    /// Back to defaults after the account signs out.
+    func reset() {
+        settings = .default
+        errorMessage = nil
+    }
+
     func load() async {
         isLoading = true
         defer { isLoading = false }

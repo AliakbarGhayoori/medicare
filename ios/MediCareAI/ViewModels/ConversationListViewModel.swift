@@ -17,6 +17,15 @@ final class ConversationListViewModel: ObservableObject {
         self.analytics = analytics
     }
 
+    /// Forgets the signed-out account's chats.
+    func reset() {
+        conversations = []
+        hasMore = false
+        nextCursor = nil
+        errorMessage = nil
+        isLoading = false
+    }
+
     func loadInitial() async {
         isLoading = true
         errorMessage = nil

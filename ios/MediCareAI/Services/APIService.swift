@@ -35,12 +35,14 @@ final class APIService: APIServicing {
         struct AskRequest: Codable {
             let question: String
             let conversationId: String?
+            /// Asks for a one-line answer, explanation, then Do this / Watch for lists.
+            let answerFormat: String
         }
 
         var request = try await authorizedRequest(
             path: "/api/chat/ask",
             method: "POST",
-            body: AskRequest(question: question, conversationId: conversationId)
+            body: AskRequest(question: question, conversationId: conversationId, answerFormat: "sections")
         )
         request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
         return try await sseClient.stream(request: request)

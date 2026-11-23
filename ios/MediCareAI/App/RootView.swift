@@ -12,8 +12,7 @@ struct RootView: View {
             Group {
                 switch authViewModel.state {
                 case .loading:
-                    ProgressView("Getting things ready...")
-                        .font(.body)
+                    LoadingView()
 
                 case .unauthenticated:
                     if context.hasCompletedOnboarding {
@@ -42,23 +41,26 @@ struct RootView: View {
                 .zIndex(10)
             }
         }
-        .dynamicTypeSize(dynamicTypeSize)
+        .modifier(MinimumTextSize(minimum: settingsViewModel.settings.fontSize.minimumDynamicType))
         .contrast(settingsViewModel.settings.highContrast ? 1.2 : 1.0)
+        .tint(Color.mcBlueText)
         .task {
             context.analyticsService.track("app_launched", properties: [:])
             await authViewModel.checkAuthState()
         }
     }
+}
 
-    private var dynamicTypeSize: DynamicTypeSize {
-        switch settingsViewModel.settings.fontSize {
-        case .regular:
-            return .large
-        case .large:
-            return .xLarge
-        case .extraLarge:
-            return .accessibility1
+private struct LoadingView: View {
+    var body: some View {
+        VStack(spacing: 14) {
+            HeartbeatActivity()
+            Text("Getting things ready…")
+                .font(.body)
+                .foregroundStyle(Color.mcInk2)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .mcScreenBackground()
     }
 }
 
@@ -77,9 +79,9 @@ private struct MainTabView: View {
                 V10MemoryView()
             }
             .tabItem {
-                Label("Health Profile", systemImage: "heart.text.square.fill")
+                Label("My health", systemImage: "heart.fill")
             }
-            .accessibilityIdentifier("tab.healthProfile")
+            .accessibilityIdentifier("tab.health")
 
             NavigationStack {
                 SettingsView()
