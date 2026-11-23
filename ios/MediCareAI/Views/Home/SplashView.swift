@@ -1,75 +1,40 @@
 import SwiftUI
 
+/// The heartbeat draws in, the name fades up, then the app opens.
 struct SplashView: View {
-    @State private var logoScale: CGFloat = 0.7
-    @State private var logoOpacity: Double = 0
-    @State private var textOpacity: Double = 0
-    @State private var textOffset: CGFloat = 12
-    @State private var glowOpacity: Double = 0
-
     let onFinished: () -> Void
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var showsName = false
+
     var body: some View {
-        ZStack {
-            Color.mcBackground
-                .ignoresSafeArea()
-
-            // Soft radial glow
-            Circle()
-                .fill(
-                    RadialGradient(
-                        colors: [Color.mcAccent.opacity(0.1), Color.clear],
-                        center: .center,
-                        startRadius: 20,
-                        endRadius: 180
-                    )
-                )
-                .frame(width: 360, height: 360)
-                .opacity(glowOpacity)
-
-            VStack(spacing: 20) {
-                Image("auth-hero")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 100, height: 100)
-                    .accessibilityHidden(true)
-                    .scaleEffect(logoScale)
-                    .opacity(logoOpacity)
-
-                VStack(spacing: 6) {
-                    Text("MediCare AI")
-                        .font(.system(size: 26, weight: .bold, design: .rounded))
-                        .foregroundStyle(Color.mcTextPrimary)
-                        .opacity(textOpacity)
-                        .offset(y: textOffset)
-
-                    Text("Your health, understood.")
-                        .font(.callout)
-                        .foregroundStyle(Color.mcTextSecondary)
-                        .opacity(textOpacity)
-                        .offset(y: textOffset)
+        VStack(spacing: 18) {
+            HeartbeatLine(variant: .mark, lineWidth: 5, drawsIn: true)
+                .frame(width: 120, height: 62)
+            VStack(spacing: 6) {
+                Text("MediCare AI")
+                    .font(.mcDisplay(44, relativeTo: .largeTitle))
+                    .foregroundStyle(Color.mcInk)
+                Text("Your health, understood.")
+                    .font(.body)
+                    .foregroundStyle(Color.mcInk2)
+            }
+            .opacity(showsName ? 1 : 0)
+            .offset(y: showsName || reduceMotion ? 0 : 8)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .mcScreenBackground()
+        .accessibilityElement(children: .combine)
+        .task {
+            if reduceMotion {
+                showsName = true
+            } else {
+                withAnimation(.easeOut(duration: 0.5).delay(0.4)) {
+                    showsName = true
                 }
             }
-        }
-        .onAppear {
-            withAnimation(.easeOut(duration: 0.6)) {
-                logoScale = 1.0
-                logoOpacity = 1.0
-                glowOpacity = 0.8
-            }
-
-            withAnimation(.easeOut(duration: 0.5).delay(0.3)) {
-                textOpacity = 1.0
-                textOffset = 0
-            }
-
-            withAnimation(.easeOut(duration: 0.6).delay(0.9)) {
-                glowOpacity = 0
-            }
-
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
-                onFinished()
-            }
+            try? await Task.sleep(for: .seconds(reduceMotion ? 0.6 : 1.7))
+            onFinished()
         }
     }
 }

@@ -84,7 +84,8 @@ final class AuthService: AuthServicing {
             logger.info("signIn succeeded")
             return AuthSession(uid: result.user.uid, email: result.user.email, displayName: result.user.displayName)
         } catch {
-            logger.error("signIn failed: \(String(describing: error), privacy: .public)")
+            let nsError = error as NSError
+            logger.error("signIn failed: \(nsError.domain, privacy: .public)#\(nsError.code, privacy: .public)")
             throw error
         }
         #else
@@ -107,7 +108,8 @@ final class AuthService: AuthServicing {
             logger.info("signUp succeeded")
             return AuthSession(uid: result.user.uid, email: result.user.email)
         } catch {
-            logger.error("signUp failed: \(String(describing: error), privacy: .public)")
+            let nsError = error as NSError
+            logger.error("signUp failed: \(nsError.domain, privacy: .public)#\(nsError.code, privacy: .public)")
             throw error
         }
         #else

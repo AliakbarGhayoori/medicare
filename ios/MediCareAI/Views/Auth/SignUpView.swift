@@ -3,153 +3,119 @@ import SwiftUI
 struct SignUpView: View {
     @EnvironmentObject private var authViewModel: AuthViewModel
 
+    @State private var firstName = ""
     @State private var email = ""
     @State private var password = ""
     @State private var confirmPassword = ""
     @State private var isLoading = false
-    private let isUITesting = ProcessInfo.processInfo.arguments.contains("--uitesting")
+
+    private var passwordLongEnough: Bool { password.count >= 8 }
+    private var passwordsMatch: Bool { password == confirmPassword }
+
+    private var isFormValid: Bool {
+        !email.trimmingCharacters(in: .whitespaces).isEmpty && passwordLongEnough && passwordsMatch
+    }
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 20) {
-                VStack(spacing: 10) {
-                    Image("auth-hero")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(maxWidth: 100, maxHeight: 100)
-                        .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 18) {
+                AuthHeader(
+                    title: "Create your account",
+                    subtitle: "It takes a minute. Your chats and health profile stay private to you.",
+                    showsMark: false
+                )
+                .padding(.top, 8)
 
-                    Text("MediCare AI")
-                        .font(.title2.bold())
-                        .foregroundStyle(Color.mcTextPrimary)
-
-                    Text("Create your account to get started.")
-                        .font(.callout)
-                        .foregroundStyle(Color.mcTextSecondary)
+                FormField(label: "What should we call you?", note: "Optional. We use it to greet you.") {
+                    TextField("First name", text: $firstName)
+                        .textContentType(.givenName)
+                        .textInputAutocapitalization(.words)
+                        .autocorrectionDisabled()
+                        .accessibilityLabel("What should we call you? Optional")
+                        .accessibilityIdentifier("signup.firstName")
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.bottom, 4)
 
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Email")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                        .foregroundStyle(Color.mcTextPrimary)
+                FormField(label: "Email") {
                     TextField("you@example.com", text: $email)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .keyboardType(.emailAddress)
-                        .font(.body)
-                        .padding(14)
-                        .background(
-                            RoundedRectangle(cornerRadius: 10)
-                                .fill(Color.mcInputBackground)
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 10)
-                                .stroke(Color.mcInputBorder, lineWidth: 1)
-                        )
+                        .textContentType(UITesting.isActive ? nil : .username)
                         .accessibilityLabel("Email")
                         .accessibilityIdentifier("signup.email")
                 }
 
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Password")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                        .foregroundStyle(Color.mcTextPrimary)
-                    SecureField("Create a password", text: $password)
-                        .textContentType(isUITesting ? .oneTimeCode : .newPassword)
-                        .font(.body)
-                        .padding(14)
-                        .background(
-                            RoundedRectangle(cornerRadius: 10)
-                                .fill(Color.mcInputBackground)
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 10)
-                                .stroke(Color.mcInputBorder, lineWidth: 1)
-                        )
-                        .accessibilityLabel("Password")
-                        .accessibilityIdentifier("signup.password")
-
-                    HStack(spacing: 4) {
-                        Image(systemName: password.count >= 8 ? "checkmark.circle.fill" : "circle")
-                            .font(.caption)
-                            .foregroundStyle(password.count >= 8 ? Color.mcSuccessGreen : Color.mcTextSecondary)
-                        Text("Use at least 8 characters.")
-                            .font(.caption)
-                            .foregroundStyle(Color.mcTextSecondary)
+                    FormField(label: "Password") {
+                        SecureField("Choose a password", text: $password)
+                            .textContentType(UITesting.isActive ? .oneTimeCode : .newPassword)
+                            .accessibilityLabel("Password")
+                            .accessibilityIdentifier("signup.password")
                     }
-                    .padding(.top, 2)
+                    Label {
+                        Text("At least 8 characters")
+                    } icon: {
+                        Image(systemName: passwordLongEnough ? "checkmark.circle.fill" : "circle")
+                            .foregroundStyle(passwordLongEnough ? Color.mcGreen : Color.mcInk2)
+                    }
+                    .font(.footnote)
+                    .foregroundStyle(Color.mcInk2)
+                    .accessibilityLabel(passwordLongEnough ? "Password is long enough" : "Use at least 8 characters")
                 }
 
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Confirm Password")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                        .foregroundStyle(Color.mcTextPrimary)
-                    SecureField("Re-enter your password", text: $confirmPassword)
-                        .textContentType(isUITesting ? .oneTimeCode : .newPassword)
-                        .font(.body)
-                        .padding(14)
-                        .background(
-                            RoundedRectangle(cornerRadius: 10)
-                                .fill(Color.mcInputBackground)
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 10)
-                                .stroke(Color.mcInputBorder, lineWidth: 1)
-                        )
+                FormField(label: "Type the password again") {
+                    SecureField("Same password", text: $confirmPassword)
+                        .textContentType(UITesting.isActive ? .oneTimeCode : .newPassword)
                         .accessibilityLabel("Confirm password")
                         .accessibilityIdentifier("signup.confirmPassword")
                 }
 
-                if password != confirmPassword && !confirmPassword.isEmpty {
-                    Text("Those passwords do not match yet.")
-                        .font(.callout)
-                        .foregroundStyle(Color.mcEmergencyRed)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                if !confirmPassword.isEmpty && !passwordsMatch {
+                    FormMessage(text: "The two passwords are not the same yet.")
+                }
+
+                if let error = authViewModel.errorMessage {
+                    FormMessage(text: error)
                 }
 
                 Button {
                     Task {
                         isLoading = true
-                        await authViewModel.signUp(email: email, password: password)
+                        await authViewModel.signUp(
+                            email: email.trimmingCharacters(in: .whitespaces),
+                            password: password,
+                            firstName: firstName
+                        )
                         isLoading = false
                     }
                 } label: {
                     if isLoading {
                         ProgressView()
-                            .frame(maxWidth: .infinity)
+                            .tint(.white)
                     } else {
                         Text("Create account")
-                            .frame(maxWidth: .infinity)
                     }
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(Color.mcAccent)
-                .controlSize(.large)
+                .buttonStyle(PrimaryButtonStyle())
                 .disabled(!isFormValid || isLoading)
-                .accessibilityHint("Creates a new account")
+                .accessibilityHint("Creates your account")
                 .accessibilityIdentifier("signup.submit")
 
-                if let errorMessage = authViewModel.errorMessage {
-                    Text(errorMessage)
-                        .font(.callout)
-                        .foregroundStyle(Color.mcEmergencyRed)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-
-                Spacer()
+                Text("By creating an account you agree to the [terms of use](https://mediguide.co/terms) and the [privacy policy](https://mediguide.co/privacy).")
+                    .font(.footnote)
+                    .foregroundStyle(Color.mcInk2)
+                    .tint(Color.mcBlueText)
             }
-            .padding(16)
+            .padding(.horizontal, 20)
+            .padding(.bottom, 32)
         }
-        .background(Color.mcBackground)
-        .navigationTitle("Create Account")
-    }
-
-    private var isFormValid: Bool {
-        !email.isEmpty && password.count >= 8 && password == confirmPassword
+        .scrollDismissesKeyboard(.interactively)
+        .mcScreenBackground()
+        .accessibilityIdentifier("screen.signup")
+        .navigationTitle("")
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            authViewModel.errorMessage = nil
+        }
     }
 }

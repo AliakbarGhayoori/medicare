@@ -74,12 +74,17 @@ final class SettingsViewModel: ObservableObject {
         analytics.track("logout", properties: [:])
     }
 
-    func deleteAccount() async {
+    /// - Returns: true when the account is gone.
+    @discardableResult
+    func deleteAccount() async -> Bool {
+        errorMessage = nil
         do {
             try await apiService.deleteAccount()
             analytics.track("account_deleted", properties: [:])
+            return true
         } catch {
             errorMessage = ErrorHandling.message(for: error)
+            return false
         }
     }
 }

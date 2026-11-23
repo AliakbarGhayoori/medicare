@@ -12,6 +12,9 @@ final class AuthViewModel: ObservableObject {
 
     @Published var state: AuthState = .loading {
         didSet {
+            if state == .unauthenticated {
+                firstName = nil
+            }
             if state == .unauthenticated, oldValue != .unauthenticated {
                 onSessionEnded?()
             }
@@ -53,10 +56,10 @@ final class AuthViewModel: ObservableObject {
             state = .authenticated
             logger.info("signIn completed and state=authenticated")
         } catch {
-            logger.error("signIn failed: \(String(describing: error), privacy: .public)")
+            let nsError = error as NSError
+            logger.error("signIn failed: \(nsError.domain, privacy: .public)#\(nsError.code, privacy: .public)")
             let verboseErrors = ProcessInfo.processInfo.environment["UITEST_VERBOSE_ERRORS"] == "true"
             if verboseErrors {
-                let nsError = error as NSError
                 errorMessage = "Sign in failed: \(nsError.domain)#\(nsError.code) - \(error.localizedDescription)"
             } else {
                 errorMessage = "That email and password do not match our records."
@@ -75,10 +78,10 @@ final class AuthViewModel: ObservableObject {
             state = .authenticated
             logger.info("signUp completed and state=authenticated")
         } catch {
-            logger.error("signUp failed: \(String(describing: error), privacy: .public)")
+            let nsError = error as NSError
+            logger.error("signUp failed: \(nsError.domain, privacy: .public)#\(nsError.code, privacy: .public)")
             let verboseErrors = ProcessInfo.processInfo.environment["UITEST_VERBOSE_ERRORS"] == "true"
             if verboseErrors {
-                let nsError = error as NSError
                 errorMessage = "Sign up failed: \(nsError.domain)#\(nsError.code) - \(error.localizedDescription)"
             } else {
                 errorMessage = "We could not create your account. Double-check your details and try again."
@@ -116,12 +119,21 @@ final class AuthViewModel: ObservableObject {
         firstName = NameStore.firstName(for: session.uid) ?? Greeting.cleanedFirstName(session.displayName)
     }
 
+    /// Saves the name to greet the person with. An empty name removes it everywhere, so the
+    /// greeting has no name rather than falling back to an older one.
     func setFirstName(_ name: String) async {
         guard let uid = authService.currentSession?.uid else { return }
-        NameStore.setFirstName(name, for: uid)
-        refreshFirstName()
-        if let cleaned = Greeting.cleanedFirstName(name) {
-            await authService.updateDisplayName(cleaned)
+        let cleaned = Greeting.cleanedFirstName(name)
+        NameStore.setFirstName(cleaned, for: uid)
+        firstName = cleaned
+        await authService.updateDisplayName(cleaned ?? "")
+    }
+
+    /// Removes the name kept on this iPhone, before the account is deleted.
+    func forgetFirstName() {
+        if let uid = authService.currentSession?.uid {
+            NameStore.setFirstName(nil, for: uid)
         }
+        firstName = nil
     }
 }

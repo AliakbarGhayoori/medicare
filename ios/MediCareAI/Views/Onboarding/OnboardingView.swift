@@ -1,7 +1,10 @@
 import SwiftUI
 
+/// Four short pages before the first sign-in: what the app does, how it fits the person,
+/// what gets shared (consent) and what it is not (agreement).
 struct OnboardingView: View {
     @EnvironmentObject private var context: AppContext
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @AppStorage("mc.onboarding.page") private var page = 0
     @AppStorage("mc.onboarding.acceptedDisclaimer") private var acceptedDisclaimer = false
@@ -11,162 +14,35 @@ struct OnboardingView: View {
     private let totalPages = 4
 
     var body: some View {
-        ZStack {
-            Color.mcBackground.ignoresSafeArea()
-
-            VStack(spacing: 0) {
-                TabView(selection: $page) {
-                    welcomePage.tag(0)
-                    personalizedPage.tag(1)
-                    DataPrivacyView(acceptedDataSharing: $acceptedDataSharing).tag(2)
-                    DisclaimerView(acceptedDisclaimer: $acceptedDisclaimer).tag(3)
-                }
-                .tabViewStyle(.page(indexDisplayMode: .never))
-
-                // Bottom dock: progress + CTA
-                VStack(spacing: 16) {
-                    HStack(spacing: 6) {
-                        ForEach(0..<totalPages, id: \.self) { index in
-                            Capsule()
-                                .fill(index == page ? Color.mcAccent : Color.mcDivider)
-                                .frame(width: index == page ? 24 : 8, height: 6)
-                                .animation(.easeInOut(duration: 0.25), value: page)
-                        }
-                    }
-
-                    Button {
-                        if page < totalPages - 1 {
-                            withAnimation(.easeInOut(duration: 0.3)) { page += 1 }
-                            return
-                        }
-
-                        guard acceptedDisclaimer && acceptedDataSharing else { return }
-                        let duration = Int(Date().timeIntervalSince(startedAt))
-                        context.analyticsService.track(
-                            "onboarding_completed",
-                            properties: ["durationSeconds": String(duration)]
-                        )
-                        page = 0
-                        acceptedDisclaimer = false
-                        acceptedDataSharing = false
-                        context.hasCompletedOnboarding = true
-                    } label: {
-                        Text(buttonLabel)
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(Color.mcAccent)
-                    .controlSize(.large)
-                    .disabled(isButtonDisabled)
-                }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 16)
-                .padding(.top, 12)
+        VStack(spacing: 0) {
+            TabView(selection: $page) {
+                WelcomePage().tag(0)
+                PersonalPage().tag(1)
+                DataPrivacyView(acceptedDataSharing: $acceptedDataSharing).tag(2)
+                DisclaimerView(acceptedDisclaimer: $acceptedDisclaimer).tag(3)
             }
+            .tabViewStyle(.page(indexDisplayMode: .never))
+
+            VStack(spacing: 16) {
+                PageDots(count: totalPages, current: page)
+                Button(action: next) {
+                    Text(buttonLabel)
+                }
+                .buttonStyle(PrimaryButtonStyle())
+                .disabled(isButtonDisabled)
+                .accessibilityIdentifier("onboarding.next")
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 12)
+            .padding(.bottom, 16)
         }
+        .mcScreenBackground()
+        .accessibilityIdentifier("screen.onboarding")
         .onAppear { startedAt = Date() }
     }
 
-    // MARK: - Page 1: Welcome (heroFullBleed)
-
-    private var welcomePage: some View {
-        VStack(spacing: 0) {
-            // Full-bleed hero — image fills the zone edge to edge
-            Image("onboarding-welcome")
-                .resizable()
-                .scaledToFill()
-                .frame(maxWidth: .infinity)
-                .frame(height: 260)
-                .clipped()
-                .clipShape(UnevenRoundedRectangle(
-                    bottomLeadingRadius: 24, bottomTrailingRadius: 24
-                ))
-                .accessibilityHidden(true)
-
-            Spacer(minLength: 12)
-
-            // Content dock
-            VStack(spacing: 14) {
-                EyebrowChip(text: "Evidence-backed")
-
-                Text("Health Answers You Can Trust")
-                    .font(.title2.bold())
-                    .foregroundStyle(Color.mcTextPrimary)
-                    .multilineTextAlignment(.center)
-
-                Text("Clear, evidence-backed guidance with sources you can verify.")
-                    .font(.callout)
-                    .foregroundStyle(Color.mcTextSecondary)
-                    .multilineTextAlignment(.center)
-
-                HStack(spacing: 8) {
-                    ProofChip(text: "Trusted sources")
-                    ProofChip(text: "Plain language")
-                    ProofChip(text: "Private")
-                }
-                .padding(.top, 4)
-            }
-            .padding(.horizontal, 24)
-
-            Spacer(minLength: 12)
-        }
-    }
-
-    // MARK: - Page 2: Personalization (heroFullBleed)
-
-    private var personalizedPage: some View {
-        VStack(spacing: 0) {
-            Image("onboarding-personalized")
-                .resizable()
-                .scaledToFill()
-                .frame(maxWidth: .infinity)
-                .frame(height: 260)
-                .clipped()
-                .clipShape(UnevenRoundedRectangle(
-                    bottomLeadingRadius: 24, bottomTrailingRadius: 24
-                ))
-                .accessibilityHidden(true)
-
-            Spacer(minLength: 12)
-
-            VStack(spacing: 14) {
-                EyebrowChip(text: "More helpful over time")
-
-                Text("Personalized for You")
-                    .font(.title2.bold())
-                    .foregroundStyle(Color.mcTextPrimary)
-                    .multilineTextAlignment(.center)
-
-                Text("Share medications, conditions, and health goals so answers fit your situation.")
-                    .font(.callout)
-                    .foregroundStyle(Color.mcTextSecondary)
-                    .multilineTextAlignment(.center)
-
-                HStack(spacing: 8) {
-                    ProofChip(text: "Medications")
-                    ProofChip(text: "Conditions")
-                    ProofChip(text: "Care goals")
-                }
-                .padding(.top, 4)
-
-                Text("You can edit this anytime.")
-                    .font(.caption)
-                    .foregroundStyle(Color.mcTextSecondary)
-            }
-            .padding(.horizontal, 24)
-
-            Spacer(minLength: 12)
-        }
-    }
-
-    // MARK: - Helpers
-
     private var buttonLabel: String {
-        switch page {
-        case 2: return "I consent to data sharing"
-        case 3: return "Get Started"
-        default: return "Continue"
-        }
+        page == totalPages - 1 ? "Get started" : "Continue"
     }
 
     private var isButtonDisabled: Bool {
@@ -176,59 +52,151 @@ struct OnboardingView: View {
         default: return false
         }
     }
-}
 
-// MARK: - Small Components
-
-struct EyebrowChip: View {
-    let text: String
-
-    var body: some View {
-        Text(text.uppercased())
-            .font(.caption2.weight(.bold))
-            .tracking(0.8)
-            .foregroundStyle(Color.mcAccent)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-            .background(Color.mcAccent.opacity(0.1))
-            .clipShape(Capsule())
+    private func next() {
+        if page < totalPages - 1 {
+            if reduceMotion {
+                page += 1
+            } else {
+                withAnimation(.easeInOut(duration: 0.3)) { page += 1 }
+            }
+            return
+        }
+        guard acceptedDisclaimer && acceptedDataSharing else { return }
+        let duration = Int(Date().timeIntervalSince(startedAt))
+        context.analyticsService.track(
+            "onboarding_completed",
+            properties: ["durationSeconds": String(duration)]
+        )
+        page = 0
+        acceptedDisclaimer = false
+        acceptedDataSharing = false
+        context.hasCompletedOnboarding = true
     }
 }
 
-struct ProofChip: View {
-    let text: String
+/// Small capsules that show which page is on screen.
+private struct PageDots: View {
+    let count: Int
+    let current: Int
 
     var body: some View {
-        Text(text)
-            .font(.caption2.weight(.medium))
-            .foregroundStyle(Color.mcTextSecondary)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-            .background(Color.mcBackgroundSecondary)
-            .clipShape(Capsule())
+        HStack(spacing: 6) {
+            ForEach(0..<count, id: \.self) { index in
+                Capsule()
+                    .fill(index == current ? Color.mcBlue : Color.mcLine)
+                    .frame(width: index == current ? 24 : 8, height: 8)
+            }
+        }
+        .animation(.easeInOut(duration: 0.25), value: current)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Page \(current + 1) of \(count)")
     }
 }
 
-/// Tinted plate container for supportPlate images (3, 4, 5, 8)
-struct ImagePlate: View {
-    let name: String
-    var maxSize: CGFloat = 160
+/// A scrolling page with a serif title and body text.
+struct OnboardingPage<Content: View>: View {
+    let title: String
+    let text: String
+    @ViewBuilder let content: Content
 
     var body: some View {
-        Image(name)
-            .resizable()
-            .scaledToFit()
-            .frame(maxWidth: maxSize, maxHeight: maxSize)
-            .padding(16)
-            .background(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(Color.mcBackgroundSecondary)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .stroke(Color.mcDivider, lineWidth: 0.5)
-                    )
-                    .shadow(color: .black.opacity(0.04), radius: 8, y: 4)
-            )
-            .accessibilityHidden(true)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                Text(title)
+                    .font(.mcDisplay(38, relativeTo: .largeTitle))
+                    .foregroundStyle(Color.mcInk)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityAddTraits(.isHeader)
+                Text(text)
+                    .font(.body)
+                    .foregroundStyle(Color.mcInk2)
+                    .fixedSize(horizontal: false, vertical: true)
+                content
+                    .padding(.top, 6)
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 24)
+            .padding(.bottom, 16)
+        }
+    }
+}
+
+private struct WelcomePage: View {
+    var body: some View {
+        OnboardingPage(
+            title: "Health answers you can trust",
+            text: "Ask in your own words, by typing or talking. Every answer names the trusted sources it comes from."
+        ) {
+            VStack(alignment: .leading, spacing: 18) {
+                HeartbeatLine(variant: .flourish, lineWidth: 3, drawsIn: true)
+                    .frame(width: 220, height: 48)
+                FeatureRow(
+                    symbol: "checkmark.seal.fill",
+                    tint: .tileBlue,
+                    title: "Sources named",
+                    detail: "Each answer shows where its facts come from."
+                )
+                FeatureRow(
+                    symbol: "text.bubble.fill",
+                    tint: .tileTeal,
+                    title: "Plain language",
+                    detail: "A short answer first, then what to do and what to watch for."
+                )
+                FeatureRow(
+                    symbol: "lock.fill",
+                    tint: .tileSlate,
+                    title: "Private to you",
+                    detail: "Never sold and never used for ads."
+                )
+            }
+        }
+    }
+}
+
+private struct PersonalPage: View {
+    var body: some View {
+        OnboardingPage(
+            title: "Answers that fit you",
+            text: "Tell MediCare AI about your conditions and medicines. It remembers them and takes them into account in every answer."
+        ) {
+            VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: 0) {
+                    sampleRow(symbol: "stethoscope", tint: .tileRed, title: "Conditions", item: "Type 2 diabetes")
+                    Divider()
+                        .overlay(Color.mcLine)
+                        .padding(.leading, 56)
+                    sampleRow(symbol: "pills.fill", tint: .tileTeal, title: "Medicines", item: "Metformin 500 mg with breakfast")
+                }
+                .background(Color.mcSurface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .strokeBorder(Color.mcLine.opacity(0.7), lineWidth: 0.5)
+                )
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Example: conditions, type 2 diabetes. Medicines, metformin 500 milligrams with breakfast.")
+
+                Label("You can change or delete it any time in My health.", systemImage: "lock.fill")
+                    .font(.subheadline)
+                    .foregroundStyle(Color.mcInk2)
+            }
+        }
+    }
+
+    private func sampleRow(symbol: String, tint: Color, title: String, item: String) -> some View {
+        HStack(spacing: 12) {
+            IconTile(systemName: symbol, color: tint)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color.mcInk2)
+                Text(item)
+                    .font(.body)
+                    .foregroundStyle(Color.mcInk)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

@@ -1,69 +1,53 @@
 import SwiftUI
 
+/// What is sent to which service. Nothing is sent before the person agrees.
 struct DataPrivacyView: View {
     @Binding var acceptedDataSharing: Bool
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Support plate image
-            ImagePlate(name: "onboarding-privacy", maxSize: 140)
-                .padding(.top, 32)
+        OnboardingPage(
+            title: "What gets shared",
+            text: "To answer you, some of your information is sent to two services. Nothing is sent until you agree."
+        ) {
+            VStack(alignment: .leading, spacing: 18) {
+                FeatureRow(
+                    symbol: "bubble.left.and.bubble.right.fill",
+                    tint: .tileViolet,
+                    title: "Your question and health profile",
+                    detail: "Sent to OpenRouter, the AI service that writes the answer."
+                )
+                FeatureRow(
+                    symbol: "magnifyingglass",
+                    tint: .tileBlue,
+                    title: "Search words from your question",
+                    detail: "Sent to Tavily to find trusted sources such as the NHS and Mayo Clinic."
+                )
+                FeatureRow(
+                    symbol: "hand.raised.fill",
+                    tint: .tileSlate,
+                    title: "Nothing else",
+                    detail: "Your data is never sold and never used for ads."
+                )
 
-            Spacer(minLength: 8)
+                Link("Read the privacy policy", destination: URL(string: "https://mediguide.co/privacy")!)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(Color.mcBlueText)
+                    .frame(minHeight: 44)
 
-            // Content dock
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 14) {
-                    EyebrowChip(text: "Required before use")
-
-                    Text("Know What Gets Shared")
-                        .font(.title3.bold())
-                        .foregroundStyle(Color.mcTextPrimary)
-                        .multilineTextAlignment(.center)
-
-                    Text("Some data is sent to third-party services to answer your questions. Nothing is shared until you consent.")
-                        .font(.callout)
-                        .foregroundStyle(Color.mcTextSecondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 4)
-
-                    VStack(spacing: 8) {
-                        TrustCard(
-                            icon: "bubble.left.and.text.bubble.right",
-                            title: "Your questions and health profile",
-                            description: "Sent to OpenRouter (AI service) to generate medical guidance."
-                        )
-                        TrustCard(
-                            icon: "magnifyingglass",
-                            title: "Search queries from your questions",
-                            description: "Sent to Tavily to find evidence from Mayo Clinic, NIH, and other trusted sources."
-                        )
-                        TrustCard(
-                            icon: "lock.shield",
-                            title: "Your data stays private",
-                            description: "Never sold, never used for ads, never shared beyond what's needed."
-                        )
-                    }
-
-                    Text("[Privacy Policy](https://mediguide.co/privacy)")
-                        .font(.caption)
-                        .foregroundStyle(Color.mcTextSecondary)
-                        .tint(Color.mcAccent)
-
-                    Toggle(isOn: $acceptedDataSharing) {
-                        Text("I understand and consent to this data sharing")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(Color.mcTextPrimary)
-                    }
-                    .tint(Color.mcAccent)
-                    .padding(14)
-                    .background(Color.mcBackgroundSecondary)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .accessibilityHint("Required before continuing")
+                Toggle(isOn: $acceptedDataSharing) {
+                    Text("I understand and agree to this sharing")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(Color.mcInk)
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
-                .padding(.bottom, 12)
+                .tint(Color.mcBlue)
+                .padding(16)
+                .background(Color.mcSurface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .strokeBorder(Color.mcLine, lineWidth: 1)
+                )
+                .accessibilityHint("Needed before you can continue")
+                .accessibilityIdentifier("onboarding.consentSharing")
             }
         }
     }

@@ -7,69 +7,61 @@ struct DeleteAccountView: View {
     @State private var confirmationText = ""
     @State private var isDeleting = false
 
+    private var isConfirmed: Bool {
+        confirmationText.trimmingCharacters(in: .whitespaces).uppercased() == "DELETE"
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Delete Account")
-                .font(.title2)
-                .bold()
-                .foregroundStyle(Color.mcTextPrimary)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                Text("This deletes your account, your chats and your health profile. It can't be undone.")
+                    .font(.body)
+                    .foregroundStyle(Color.mcInk)
+                    .fixedSize(horizontal: false, vertical: true)
 
-            Text("Deleting your account permanently removes your data and cannot be undone.")
-                .font(.body)
-                .foregroundStyle(Color.mcTextSecondary)
+                FormField(label: "Type DELETE to confirm") {
+                    TextField("DELETE", text: $confirmationText)
+                        .textInputAutocapitalization(.characters)
+                        .autocorrectionDisabled()
+                        .accessibilityLabel("Type DELETE to confirm")
+                        .accessibilityIdentifier("accountDelete.confirmation")
+                }
 
-            Text("Type DELETE to confirm")
-                .font(.headline)
-                .foregroundStyle(Color.mcTextPrimary)
+                if let error = settingsViewModel.errorMessage {
+                    FormMessage(text: error)
+                }
 
-            TextField("DELETE", text: $confirmationText)
-                .textInputAutocapitalization(.characters)
-                .autocorrectionDisabled()
-                .font(.body)
-                .padding(14)
-                .background(
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(Color.mcInputBackground)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10)
-                        .stroke(Color.mcInputBorder, lineWidth: 1)
-                )
-                .accessibilityIdentifier("accountDelete.confirmation")
-
-            Button(role: .destructive) {
-                Task {
-                    isDeleting = true
-                    await settingsViewModel.deleteAccount()
-                    if settingsViewModel.errorMessage == nil {
-                        authViewModel.signOut()
+                Button {
+                    Task {
+                        isDeleting = true
+                        if await settingsViewModel.deleteAccount() {
+                            authViewModel.forgetFirstName()
+                            authViewModel.signOut()
+                        }
+                        isDeleting = false
                     }
-                    isDeleting = false
+                } label: {
+                    if isDeleting {
+                        ProgressView()
+                            .tint(.white)
+                    } else {
+                        Text("Delete my account")
+                    }
                 }
-            } label: {
-                if isDeleting {
-                    ProgressView()
-                        .frame(maxWidth: .infinity)
-                } else {
-                    Text("Permanently Delete Account")
-                        .frame(maxWidth: .infinity)
-                }
+                .buttonStyle(PrimaryButtonStyle(fill: .mcRed))
+                .disabled(!isConfirmed || isDeleting)
+                .accessibilityIdentifier("accountDelete.submit")
             }
-            .buttonStyle(.borderedProminent)
-            .tint(Color.mcEmergencyRed)
-            .disabled(confirmationText != "DELETE" || isDeleting)
-            .accessibilityIdentifier("accountDelete.submit")
-
-            if let errorMessage = settingsViewModel.errorMessage {
-                Text(errorMessage)
-                    .font(.callout)
-                    .foregroundStyle(Color.mcEmergencyRed)
-            }
-
-            Spacer()
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
         }
-        .padding(16)
-        .background(Color.mcBackground)
-        .navigationTitle("Delete Account")
+        .scrollDismissesKeyboard(.interactively)
+        .mcScreenBackground()
+        .accessibilityIdentifier("screen.deleteAccount")
+        .navigationTitle("Delete account")
+        .navigationBarTitleDisplayMode(.large)
+        .onAppear {
+            settingsViewModel.errorMessage = nil
+        }
     }
 }

@@ -5,80 +5,67 @@ struct ForgotPasswordView: View {
 
     @State private var email = ""
     @State private var didSend = false
+    @State private var isSending = false
 
     var body: some View {
         ScrollView {
-        VStack(spacing: 16) {
-            VStack(spacing: 10) {
-                Image("auth-hero")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(maxWidth: 100, maxHeight: 100)
-                    .accessibilityHidden(true)
-
-                Text("MediCare AI")
-                    .font(.title2.bold())
-                    .foregroundStyle(Color.mcTextPrimary)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.top, 8)
-
-            Text("Enter the email linked to your account and we will send a reset link.")
-                .font(.callout)
-                .foregroundStyle(Color.mcTextSecondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-            TextField("you@example.com", text: $email)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .keyboardType(.emailAddress)
-                .font(.body)
-                .padding(14)
-                .background(
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(Color.mcInputBackground)
+            VStack(alignment: .leading, spacing: 18) {
+                AuthHeader(
+                    title: "Reset your password",
+                    subtitle: "Type the email you signed up with. We will send you a link to choose a new password.",
+                    showsMark: false
                 )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10)
-                        .stroke(Color.mcInputBorder, lineWidth: 1)
-                )
-                .accessibilityLabel("Email")
-                .accessibilityIdentifier("forgot.email")
+                .padding(.top, 8)
 
-            Button("Email Me a Reset Link") {
-                Task {
-                    await authViewModel.resetPassword(email: email)
-                    if authViewModel.errorMessage == nil {
-                        didSend = true
+                FormField(label: "Email") {
+                    TextField("you@example.com", text: $email)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .keyboardType(.emailAddress)
+                        .textContentType(UITesting.isActive ? nil : .username)
+                        .accessibilityLabel("Email")
+                        .accessibilityIdentifier("forgot.email")
+                }
+
+                if didSend {
+                    FormMessage(text: "Check your inbox for the link. It can take a few minutes.", kind: .success)
+                }
+
+                if let error = authViewModel.errorMessage {
+                    FormMessage(text: error)
+                }
+
+                Button {
+                    Task {
+                        isSending = true
+                        didSend = false
+                        await authViewModel.resetPassword(email: email.trimmingCharacters(in: .whitespaces))
+                        didSend = authViewModel.errorMessage == nil
+                        isSending = false
+                    }
+                } label: {
+                    if isSending {
+                        ProgressView()
+                            .tint(.white)
+                    } else {
+                        Text(didSend ? "Send the link again" : "Email me a link")
                     }
                 }
+                .buttonStyle(PrimaryButtonStyle())
+                .disabled(email.trimmingCharacters(in: .whitespaces).isEmpty || isSending)
+                .accessibilityHint("Sends a password reset email")
+                .accessibilityIdentifier("forgot.submit")
             }
-            .buttonStyle(.borderedProminent)
-            .tint(Color.mcAccent)
-            .controlSize(.large)
-            .disabled(email.isEmpty)
-            .accessibilityHint("Sends a password reset email")
-            .accessibilityIdentifier("forgot.submit")
-
-            if didSend {
-                Text("Reset link sent. Check your inbox.")
-                    .font(.callout)
-                    .foregroundStyle(Color.mcSuccessGreen)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
-            if let errorMessage = authViewModel.errorMessage {
-                Text(errorMessage)
-                    .font(.callout)
-                    .foregroundStyle(Color.mcEmergencyRed)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
-            Spacer()
+            .padding(.horizontal, 20)
+            .padding(.bottom, 32)
         }
-        .padding(16)
+        .scrollDismissesKeyboard(.interactively)
+        .mcScreenBackground()
+        .accessibilityIdentifier("screen.forgotPassword")
+        .navigationTitle("")
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            authViewModel.errorMessage = nil
         }
-        .background(Color.mcBackground)
-        .navigationTitle("Reset Password")
     }
 }

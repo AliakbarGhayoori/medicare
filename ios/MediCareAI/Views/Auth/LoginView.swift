@@ -6,121 +6,111 @@ struct LoginView: View {
     @State private var email = ""
     @State private var password = ""
     @State private var isLoading = false
+    @FocusState private var focus: Field?
+
+    private enum Field { case email, password }
+
+    private var canSubmit: Bool {
+        !email.trimmingCharacters(in: .whitespaces).isEmpty && !password.isEmpty && !isLoading
+    }
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 24) {
-                    VStack(spacing: 12) {
-                        Image("auth-hero")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(maxWidth: 140, maxHeight: 140)
-                            .accessibilityHidden(true)
-                            .padding(.top, 32)
-
-                        Text("MediCare AI")
-                            .font(.largeTitle)
-                            .bold()
-                            .foregroundStyle(Color.mcTextPrimary)
-
-                        Text("Clear, reliable health information in plain language.")
-                            .font(.body)
-                            .foregroundStyle(Color.mcTextSecondary)
-                    }
-                    .frame(maxWidth: .infinity)
+                VStack(alignment: .leading, spacing: 18) {
+                    AuthHeader(
+                        title: "MediCare AI",
+                        subtitle: "Clear answers to your health questions, with the trusted sources named."
+                    )
+                    .padding(.top, 36)
                     .padding(.bottom, 8)
 
-                    VStack(spacing: 16) {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("Email")
-                                .font(.subheadline)
-                                .fontWeight(.medium)
-                                .foregroundStyle(Color.mcTextPrimary)
-                            TextField("you@example.com", text: $email)
-                                .textInputAutocapitalization(.never)
-                                .autocorrectionDisabled()
-                                .keyboardType(.emailAddress)
-                                .font(.body)
-                                .padding(14)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 10)
-                                        .fill(Color.mcInputBackground)
-                                )
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 10)
-                                        .stroke(Color.mcInputBorder, lineWidth: 1)
-                                )
-                                .accessibilityLabel("Email")
-                                .accessibilityIdentifier("login.email")
-                        }
-
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("Password")
-                                .font(.subheadline)
-                                .fontWeight(.medium)
-                                .foregroundStyle(Color.mcTextPrimary)
-                            SecureField("Enter your password", text: $password)
-                                .font(.body)
-                                .padding(14)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 10)
-                                        .fill(Color.mcInputBackground)
-                                )
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 10)
-                                        .stroke(Color.mcInputBorder, lineWidth: 1)
-                                )
-                                .accessibilityLabel("Password")
-                                .accessibilityIdentifier("login.password")
-                        }
+                    FormField(label: "Email") {
+                        TextField("you@example.com", text: $email)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .keyboardType(.emailAddress)
+                            .textContentType(UITesting.isActive ? nil : .username)
+                            .focused($focus, equals: .email)
+                            .submitLabel(.next)
+                            .onSubmit { focus = .password }
+                            .accessibilityLabel("Email")
+                            .accessibilityIdentifier("login.email")
                     }
 
-                    Button {
-                        Task {
-                            isLoading = true
-                            await authViewModel.signIn(email: email, password: password)
-                            isLoading = false
-                        }
-                    } label: {
+                    FormField(label: "Password") {
+                        SecureField("Your password", text: $password)
+                            .textContentType(UITesting.isActive ? .oneTimeCode : .password)
+                            .focused($focus, equals: .password)
+                            .submitLabel(.go)
+                            .onSubmit(signIn)
+                            .accessibilityLabel("Password")
+                            .accessibilityIdentifier("login.password")
+                    }
+
+                    if let error = authViewModel.errorMessage {
+                        FormMessage(text: error)
+                    }
+
+                    Button(action: signIn) {
                         if isLoading {
                             ProgressView()
-                                .frame(maxWidth: .infinity)
+                                .tint(.white)
                         } else {
-                            Text("Log In")
-                                .frame(maxWidth: .infinity)
+                            Text("Sign in")
                         }
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(Color.mcAccent)
-                    .controlSize(.large)
-                    .disabled(email.isEmpty || password.isEmpty || isLoading)
+                    .buttonStyle(PrimaryButtonStyle())
+                    .disabled(!canSubmit)
                     .accessibilityHint("Signs you in to your account")
                     .accessibilityIdentifier("login.submit")
 
-                    VStack(spacing: 12) {
-                        NavigationLink("Forgot password?", destination: ForgotPasswordView())
-                            .font(.callout)
-                            .foregroundStyle(Color.mcAccent)
-                            .accessibilityIdentifier("login.forgotPassword")
-
-                        NavigationLink("Create an account", destination: SignUpView())
-                            .font(.callout)
-                            .foregroundStyle(Color.mcAccent)
-                            .accessibilityIdentifier("login.createAccount")
+                    NavigationLink {
+                        ForgotPasswordView()
+                    } label: {
+                        Text("Forgot your password?")
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(Color.mcBlueText)
+                            .frame(maxWidth: .infinity, minHeight: 44)
                     }
+                    .accessibilityIdentifier("login.forgotPassword")
 
-                    if let errorMessage = authViewModel.errorMessage {
-                        Text(errorMessage)
-                            .font(.callout)
-                            .foregroundStyle(Color.mcEmergencyRed)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                    VStack(spacing: 10) {
+                        Text("New to MediCare AI?")
+                            .font(.subheadline)
+                            .foregroundStyle(Color.mcInk2)
+                        NavigationLink {
+                            SignUpView()
+                        } label: {
+                            Text("Create an account")
+                        }
+                        .buttonStyle(SecondaryButtonStyle(tint: .mcBlueText))
+                        .accessibilityIdentifier("login.createAccount")
                     }
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 12)
                 }
-                .padding(16)
+                .padding(.horizontal, 20)
+                .padding(.bottom, 32)
             }
-            .background(Color.mcBackground)
-            .navigationTitle("Login")
+            .scrollDismissesKeyboard(.interactively)
+            .mcScreenBackground()
+            .accessibilityIdentifier("screen.login")
+            .navigationTitle("Sign in")
+            .toolbar(.hidden, for: .navigationBar)
+            .onAppear {
+                authViewModel.errorMessage = nil
+            }
+        }
+    }
+
+    private func signIn() {
+        guard canSubmit else { return }
+        focus = nil
+        Task {
+            isLoading = true
+            await authViewModel.signIn(email: email.trimmingCharacters(in: .whitespaces), password: password)
+            isLoading = false
         }
     }
 }

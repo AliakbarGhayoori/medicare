@@ -16,12 +16,10 @@ struct V10MemoryView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                ScreenTitle(text: "My health")
                 Text("What MediCare AI knows about you. It uses this to fit every answer to you.")
                     .font(.subheadline)
                     .foregroundStyle(Color.mcInk2)
                     .fixedSize(horizontal: false, vertical: true)
-                    .padding(.top, 6)
 
                 Group {
                     if let digestText {
@@ -59,7 +57,7 @@ struct V10MemoryView: View {
         .mcScreenBackground()
         .accessibilityIdentifier("screen.healthProfile")
         .navigationTitle("My health")
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarTitleDisplayMode(.large)
         .toolbar {
             if digestText != nil {
                 ToolbarItem(placement: .topBarTrailing) {

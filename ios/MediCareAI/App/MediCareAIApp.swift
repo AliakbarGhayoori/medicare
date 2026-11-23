@@ -4,6 +4,10 @@ import SwiftUI
 struct MediCareAIApp: App {
     @StateObject private var context = AppContext()
 
+    init() {
+        NavigationBarStyle.apply()
+    }
+
     var body: some Scene {
         WindowGroup {
             RootView()
