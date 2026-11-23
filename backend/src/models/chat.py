@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from enum import StrEnum
+from typing import Literal
 
 from bson import ObjectId
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -17,6 +18,8 @@ def _ensure_utc(dt: datetime) -> datetime:
 class ChatRequest(BaseModel):
     question: str = Field(..., min_length=1, max_length=2000)
     conversation_id: str | None = Field(None, alias="conversationId")
+    # The current App Store app never sends this; it keeps the original answer layout.
+    answer_format: Literal["sections"] | None = Field(None, alias="answerFormat")
 
     model_config = ConfigDict(populate_by_name=True, str_strip_whitespace=True)
 

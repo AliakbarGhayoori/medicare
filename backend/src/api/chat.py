@@ -133,6 +133,7 @@ async def ask(
                 conversation_history=history,
                 v10_digest=v10_digest,
                 sources=sources,
+                answer_format=payload.answer_format,
             ):
                 event_type = event.get("type")
                 if event_type == "token":

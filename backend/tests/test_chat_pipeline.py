@@ -11,7 +11,7 @@ _NO_EMERGENCY = 'SAFETY_SIGNAL: {"requiresEmergencyCare": false, "category": "no
 
 
 def _fake_generator(tokens: list[str], results: list[dict]):  # noqa: ANN202
-    async def _generate(question, conversation_history, v10_digest, sources):  # noqa: ANN001, ANN202
+    async def _generate(question, conversation_history, v10_digest, sources, answer_format=None):  # noqa: ANN001, ANN202
         sources.register(results)
         yield {"type": "tool_use", "tool": "tavily_search", "status": "searching", "query": "q"}
         for token in tokens:
@@ -97,7 +97,7 @@ async def test_placeholder_profile_is_not_sent_to_the_model(
     await upsert_v10_digest(mock_db, "test_uid", "(No health profile set up yet)")
     seen: dict = {}
 
-    async def _generate(question, conversation_history, v10_digest, sources):  # noqa: ANN001, ANN202
+    async def _generate(question, conversation_history, v10_digest, sources, answer_format=None):  # noqa: ANN001, ANN202
         seen["v10_digest"] = v10_digest
         yield {"type": "token", "text": "Hello."}
 
@@ -123,3 +123,49 @@ async def test_self_harm_words_get_crisis_resources_even_if_model_says_no_emerge
 
     assert "https://findahelpline.com" in done["content"]
     assert done["requiresEmergencyCare"] is False
+
+
+def _recording_generator(seen: dict):  # noqa: ANN202
+    async def _generate(question, conversation_history, v10_digest, sources, answer_format=None):  # noqa: ANN001, ANN202
+        seen["answer_format"] = answer_format
+        yield {"type": "token", "text": "Rest helps.\n" + _NO_EMERGENCY}
+
+    return _generate
+
+
+async def test_answer_format_reaches_the_generator(monkeypatch, api_client, auth_headers):
+    seen: dict = {}
+    monkeypatch.setattr(chat_api, "generate_response_events", _recording_generator(seen))
+
+    response = await api_client.post(
+        "/api/chat/ask",
+        json={"question": "Is coffee okay with metformin?", "answerFormat": "sections"},
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 200
+    assert seen["answer_format"] == "sections"
+
+
+async def test_requests_without_answer_format_keep_the_old_layout(
+    monkeypatch, api_client, auth_headers
+):
+    seen: dict = {}
+    monkeypatch.setattr(chat_api, "generate_response_events", _recording_generator(seen))
+
+    response = await api_client.post(
+        "/api/chat/ask", json={"question": "Is coffee okay?"}, headers=auth_headers
+    )
+
+    assert response.status_code == 200
+    assert seen["answer_format"] is None
+
+
+async def test_unknown_answer_format_is_rejected(api_client, auth_headers):
+    response = await api_client.post(
+        "/api/chat/ask",
+        json={"question": "Is coffee okay?", "answerFormat": "html"},
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 422

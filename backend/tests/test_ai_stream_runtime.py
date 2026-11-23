@@ -448,3 +448,32 @@ async def test_without_keys_mock_mode_cites_a_registered_source(monkeypatch, ai_
     assert "[1]" in text
     assert "Sources:" not in text
     assert len(sources) == 1
+
+
+async def test_sections_format_reaches_the_system_prompt(monkeypatch, ai_settings, searches):
+    rounds = [tool_round(["coffee metformin"]), text_round("Yes.")]
+    completions = _install(monkeypatch, ai_settings, rounds)
+
+    sources = SourceRegistry()
+    _ = [
+        event
+        async for event in stream_runtime.generate_response_events(
+            question="Is coffee okay with metformin?",
+            conversation_history=[],
+            v10_digest=None,
+            sources=sources,
+            answer_format="sections",
+        )
+    ]
+
+    system = completions.requests[0]["messages"][0]
+    assert system["role"] == "system"
+    assert "Watch for:" in system["content"]
+
+
+async def test_default_format_keeps_the_old_system_prompt(monkeypatch, ai_settings, searches):
+    completions = _install(monkeypatch, ai_settings, [tool_round(["coffee"]), text_round("Yes.")])
+
+    await _run("Is coffee okay with metformin?")
+
+    assert "Watch for:" not in completions.requests[0]["messages"][0]["content"]

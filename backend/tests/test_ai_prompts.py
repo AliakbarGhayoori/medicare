@@ -56,3 +56,23 @@ def test_history_answers_lose_old_citation_numbers() -> None:
         {"role": "assistant", "content": "Rest helps. Fluids too."},
         {"role": "user", "content": "And for kids?"},
     ]
+
+
+def test_default_prompt_has_no_answer_layout_rules() -> None:
+    prompt = build_system_prompt("Takes metformin.")
+
+    assert prompt == build_system_prompt("Takes metformin.", answer_format=None)
+    assert "Do this:" not in prompt
+    assert "Watch for:" not in prompt
+
+
+def test_sections_prompt_keeps_the_default_prompt_and_adds_the_layout() -> None:
+    default = build_system_prompt("Takes metformin.")
+    prompt = build_system_prompt("Takes metformin.", answer_format="sections")
+
+    assert prompt.startswith(default)
+    assert "Do this:" in prompt
+    assert "Watch for:" in prompt
+    assert "one plain sentence" in prompt
+    assert "small talk" in prompt
+    assert _SIGNAL_FORMAT in prompt

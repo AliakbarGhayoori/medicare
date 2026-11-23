@@ -333,6 +333,7 @@ async def generate_response_events(
     conversation_history: list[dict],
     v10_digest: str | None,
     sources: SourceRegistry,
+    answer_format: str | None = None,
 ) -> AsyncIterator[dict]:
     """Stream one answer: research rounds first, then the answer token by token.
 
@@ -348,7 +349,7 @@ async def generate_response_events(
         return
 
     messages: list[dict[str, Any]] = [
-        {"role": "system", "content": build_system_prompt(v10_digest)},
+        {"role": "system", "content": build_system_prompt(v10_digest, answer_format)},
         *build_messages(
             conversation_history=conversation_history,
             user_question=question,
