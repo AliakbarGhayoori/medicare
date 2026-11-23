@@ -1,358 +1,210 @@
-# MediCare AI — Single Droplet Deployment Guide
+# MediCare AI — Production Deployment
 
-Deploy the entire MediCare AI backend (FastAPI + MongoDB + Caddy reverse proxy) on a single VPS droplet. The iOS app connects to this server via HTTPS.
-
----
-
-## Architecture on the Droplet
-
-```
-Internet (HTTPS :443)
-    │
-    ▼
-┌─────────────────────────────────────────────┐
-│  Caddy (auto-HTTPS, reverse proxy)          │
-│  :80 → redirect to :443                     │
-│  :443 → proxy to backend:8000               │
-├─────────────────────────────────────────────┤
-│  FastAPI Backend (Docker container)          │
-│  :8000 (internal only, not exposed)          │
-│  - Firebase Auth verification               │
-│  - OpenRouter API (Gemini 3.1 Pro)           │
-│  - Tavily search API                         │
-│  - SSE streaming                             │
-├─────────────────────────────────────────────┤
-│  MongoDB 7 (Docker container)                │
-│  :27017 (internal only, not exposed)         │
-│  - users, conversations, messages            │
-│  - v10_digests, user_settings                │
-└─────────────────────────────────────────────┘
-```
-
-All three services run in Docker containers managed by `docker compose`. Caddy handles SSL certificates automatically via Let's Encrypt. MongoDB and the backend are only reachable from within the Docker network — not exposed to the internet.
+Production runs on a single Ubuntu server. Host nginx terminates TLS; the backend and
+MongoDB run in Docker, reachable only from the server itself.
 
 ---
 
-## Prerequisites
+## How production runs
 
-### 1. External Services (get these first)
+```
+Internet ──HTTPS──▶ host nginx (Let's Encrypt via certbot)
+                     ├─ mediguide.co      → static files from /root/medicare/website
+                     └─ api.mediguide.co  → /health and /api/ → 127.0.0.1:8000
+                                              │
+              docker compose project "medicare" (docker-compose.prod.yml)
+              ├─ medicare-backend   FastAPI, port 8000 bound to 127.0.0.1
+              └─ medicare-mongo     MongoDB 7, port 27017 bound to 127.0.0.1
+                                    volumes medicare_mongo_data, medicare_mongo_config
 
-| Service | What you need | Where to get it |
-|---------|--------------|-----------------|
-| **Domain** | A domain or subdomain (e.g. `api.medicareai.app`) | Any registrar |
-| **Firebase** | Project ID, client email, private key | Firebase Console → Project Settings → Service Accounts → Generate new private key |
-| **OpenRouter** | API key | https://openrouter.ai/keys |
-| **Tavily** | API key | https://tavily.com (sign up, get API key) |
+Backend → OpenRouter  https://openrouter.ai/api/v1/chat/completions
+          (google/gemini-4-neon, automatic fallback openai/gpt-5.4)
+        → Tavily      https://api.tavily.com/search
+        → Firebase Admin SDK (ID-token verification)
+```
 
-### 2. VPS Requirements
+| File | Tracked | Purpose |
+|------|---------|---------|
+| `docker-compose.prod.yml` | yes | Production stack. Contains no secrets. |
+| `.env.prod` | **no** (git-ignored) | All backend settings plus `MONGO_ROOT_USERNAME` / `MONGO_ROOT_PASSWORD`. Template: `.env.example`. `chmod 600`. |
+| `deploy/nginx/*.conf` | yes | Copies of `/etc/nginx/sites-available/medicare` and `mediguide-website`. |
+| `docker-compose.yml` | yes | Local development only (project `medicare-dev`). Never use it for production. |
 
-- **OS**: Ubuntu 22.04 or 24.04
-- **RAM**: 2 GB minimum (4 GB recommended)
-- **Disk**: 20 GB minimum
-- **Provider**: DigitalOcean, Hetzner, Vultr, Linode — any will work
+The repository is public. Never commit `.env*` files, passwords or keys.
 
 ---
 
-## Step-by-Step Deployment
-
-### Step 1: Create the Droplet
-
-Create an Ubuntu 22.04/24.04 droplet with at least 2 GB RAM. Set up SSH key access.
+## Deploy a new version
 
 ```bash
-# From your local machine:
-ssh root@YOUR_DROPLET_IP
+cd /root/medicare
+git pull                                   # or check out the release branch
+
+# 1. Keep the running image so it can be restored
+docker tag medicare-backend:latest medicare-backend:rollback-$(date +%F-%H%M)
+
+# 2. Build and start (MongoDB is only recreated if its settings changed)
+docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build
+
+# 3. Verify
+docker compose --env-file .env.prod -f docker-compose.prod.yml ps   # both "healthy"
+curl -fsS https://api.mediguide.co/health
+docker logs --since 5m medicare-backend
 ```
 
-### Step 2: Install Docker
+Then run an end-to-end check with a temporary account: sign up through Firebase,
+call settings, profile, history and one chat question (expect at least one citation),
+then delete the account with `DELETE /api/account` and the body
+`{"confirmation": "DELETE"}`.
+
+After changing `.env.prod`, recreate the backend: settings are read once at startup.
 
 ```bash
-# Install Docker and Docker Compose
-curl -fsSL https://get.docker.com | sh
-
-# Verify
-docker --version
-docker compose version
+docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --force-recreate backend
 ```
 
-### Step 3: Configure Firewall
+## Roll back
 
 ```bash
-ufw allow OpenSSH
-ufw allow 80/tcp
-ufw allow 443/tcp
-ufw enable
+cd /root/medicare
+docker images medicare-backend                     # find the rollback tag
+docker tag medicare-backend:rollback-<stamp> medicare-backend:latest
+docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --no-build backend
 ```
 
-Only SSH (22), HTTP (80), and HTTPS (443) are open. MongoDB (27017) and the backend (8000) are NOT exposed — they communicate internally via Docker networking.
-
-### Step 4: Point DNS
-
-Add an A record in your DNS provider:
-
-```
-Type: A
-Name: api (or @ for root domain)
-Value: YOUR_DROPLET_IP
-TTL: 300
-```
-
-Wait for DNS propagation (usually 1-5 minutes).
-
-### Step 5: Clone and Configure
-
-```bash
-# Clone the repo
-git clone https://github.com/AliakbarGhayoori/medicare.git /opt/medicare
-cd /opt/medicare
-
-# Create production env file from template
-cp .env.example .env
-```
-
-Edit `.env` with your real values:
-
-```bash
-nano .env
-```
-
-**Critical values to set:**
-
-```bash
-# Firebase — from your Firebase service account JSON
-FIREBASE_PROJECT_ID=medicare-8fd9e
-FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxxxx@medicare-8fd9e.iam.gserviceaccount.com
-FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
-
-# MongoDB — use a strong password, NOT 'localdev'
-MONGODB_URI=mongodb://root:YOUR_STRONG_PASSWORD@mongo:27017/medicare-ai?authSource=admin
-MONGO_ROOT_PASSWORD=YOUR_STRONG_PASSWORD
-
-# AI — your OpenRouter API key
-OPENROUTER_API_KEY=sk-or-v1-...
-OPENROUTER_SITE_URL=https://api.yourdomain.com
-ANTHROPIC_MODEL=google/gemini-3.1-pro-preview
-
-# Search — your Tavily API key
-TAVILY_API_KEY=tvly-...
-
-# Production settings
-ENVIRONMENT=production
-ALLOWED_ORIGINS=["https://yourdomain.com"]
-AUTH_MODE=firebase
-MOCK_AI=false
-```
-
-**Important notes:**
-- `MONGODB_URI` must use `mongo` as hostname (Docker service name), not `localhost`
-- `MONGO_ROOT_PASSWORD` must match the password in `MONGODB_URI`
-- `FIREBASE_PRIVATE_KEY` — paste the full key, keep the `\n` escapes
-
-### Step 6: Deploy
-
-```bash
-cd /opt/medicare
-
-# Set your domain for Caddy (auto-HTTPS)
-export DOMAIN=api.yourdomain.com
-
-# Build and start everything
-DOMAIN=$DOMAIN docker compose up -d --build
-```
-
-This starts:
-1. **MongoDB** — database, data persisted in Docker volume
-2. **Backend** — FastAPI server on internal port 8000
-3. **Caddy** — auto-obtains Let's Encrypt SSL cert, proxies HTTPS → backend
-
-### Step 7: Verify
-
-```bash
-# Check all containers are running
-docker compose ps
-
-# Check backend health
-curl https://api.yourdomain.com/health
-# → {"status":"healthy","version":"3.0"}
-
-# Check logs for errors
-docker compose logs backend --tail 50
-docker compose logs caddy --tail 20
-docker compose logs mongo --tail 20
-```
+If the deploy also changed `.env.prod`, restore your copy of the previous file first.
+Make that copy before every edit:
+`cp -p .env.prod /root/env-backups/.env.prod.$(date +%F-%H%M)`.
 
 ---
 
-## iOS App Configuration
+## First-time setup on a new server
 
-After the backend is live, update the iOS app to point to your production URL.
+1. Install Docker (with the compose plugin), nginx and certbot. Open only SSH, HTTP and
+   HTTPS: `ufw allow OpenSSH && ufw allow 80/tcp && ufw allow 443/tcp && ufw enable`.
+2. Point the DNS A records for `mediguide.co` and `api.mediguide.co` at the server.
+3. Clone the repository to `/root/medicare` (the website config serves files from there).
+4. Create the settings file and fill in real values:
+   ```bash
+   cp .env.example .env.prod && chmod 600 .env.prod
+   ```
+   `MONGODB_URI` must use the host name `mongo` and the same user and password as
+   `MONGO_ROOT_USERNAME` / `MONGO_ROOT_PASSWORD`. MongoDB creates that user only when
+   its data volume is first initialised; changing the variables later changes nothing.
+5. Install the nginx sites, then add certificates:
+   ```bash
+   cp deploy/nginx/api.mediguide.co.conf /etc/nginx/sites-available/medicare
+   cp deploy/nginx/mediguide.co.conf /etc/nginx/sites-available/mediguide-website
+   ln -s /etc/nginx/sites-available/medicare /etc/nginx/sites-enabled/
+   ln -s /etc/nginx/sites-available/mediguide-website /etc/nginx/sites-enabled/
+   nginx -t && systemctl reload nginx
+   certbot --nginx -d api.mediguide.co -d mediguide.co
+   ```
+   On a brand-new server, remove the certbot-managed `listen 443` / `ssl_*` lines from the
+   copies first and let certbot add them back.
+6. Start the stack and verify it as in **Deploy a new version**:
+   ```bash
+   docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build
+   ```
 
-### Option A: Update project.yml (recommended)
-
-In `ios/project.yml`, update the `MediCareAI-Live` scheme:
-
-```yaml
-# Change API_BASE_URL to your production domain
-environmentVariables:
-  - variable: API_BASE_URL
-    value: https://api.yourdomain.com
-    isEnabled: true
-```
-
-Then regenerate: `cd ios && xcodegen generate`
-
-### Option B: Add a production scheme
-
-Create a third Xcode scheme `MediCareAI-Prod` with:
-- `AUTH_MODE=firebase`
-- `API_BASE_URL=https://api.yourdomain.com`
-
----
-
-## How the Pieces Connect
-
-```
-┌─────────────┐  HTTPS  ┌───────┐         ┌─────────┐
-│  iOS App    │────────►│ Caddy │────────►│ FastAPI │
-│  (SwiftUI)  │  :443   │       │  :8000   │ Backend │
-└──────┬──────┘         └───────┘         └────┬────┘
-       │                                       │
-  Firebase Auth                                │
-  (get ID token)                     ┌─────────┼──────────┐
-       │                             │         │          │
-       ▼                             ▼         ▼          ▼
-┌──────────────┐              ┌──────────┐ ┌────────┐ ┌───────┐
-│ Firebase     │              │ MongoDB  │ │OpenRou-│ │Tavily │
-│ Auth Service │              │ :27017   │ │ter API │ │Search │
-└──────────────┘              │(internal)│ │(Gemini)│ │  API  │
-                              └──────────┘ └────────┘ └───────┘
-```
-
-**Request flow:**
-1. User types a question in the iOS app
-2. iOS gets a Firebase ID token from Firebase Auth
-3. iOS sends `POST /api/chat/ask` with `Authorization: Bearer <token>` over HTTPS
-4. Caddy terminates TLS, forwards to FastAPI on port 8000
-5. FastAPI verifies the Firebase token with Firebase Admin SDK
-6. FastAPI loads user's V10 health profile and conversation history from MongoDB
-7. FastAPI calls Gemini 3.1 Pro via OpenRouter (OpenAI Chat Completions format)
-8. Gemini may call `tavily_search` tool 0-12 times for medical evidence
-9. FastAPI streams the response back as Server-Sent Events (SSE)
-10. iOS renders markdown text with citations in real-time
-11. FastAPI saves the message to MongoDB and updates V10 digest asynchronously
-
-**External API calls (from backend):**
-- `https://openrouter.ai/api/v1/chat/completions` — AI model inference
-- `https://api.tavily.com/search` — web evidence retrieval
-- Firebase Admin SDK — token verification (uses cached Google public keys)
+The iOS app's release build talks to `https://api.mediguide.co` by default
+(`ios/MediCareAI/Services/AppEnvironment.swift`); the `API_BASE_URL` scheme variable in
+`ios/project.yml` overrides it for local testing.
 
 ---
 
 ## Operations
 
-### View Logs
+### Logs
 
 ```bash
-cd /opt/medicare
-docker compose logs -f              # All services
-docker compose logs -f backend      # Backend only
-docker compose logs -f caddy        # Caddy/HTTPS only
+docker logs -f medicare-backend      # JSON lines; one request_complete per API call
+docker logs -f medicare-mongo
 ```
+
+Logs never contain question, search query, answer or profile text. `/health` checks are
+not logged. Docker rotates the files (backend 20 MB × 5, MongoDB 10 MB × 3).
 
 ### Restart
 
 ```bash
-docker compose restart backend      # Restart backend only
-docker compose restart              # Restart all
+docker compose --env-file .env.prod -f docker-compose.prod.yml restart backend
 ```
 
-### Update to Latest Code
+### MongoDB backup and restore
+
+The database user and password come from the container's own environment, so they never
+appear on the host command line.
 
 ```bash
-cd /opt/medicare
-git pull origin main
-DOMAIN=api.yourdomain.com docker compose up -d --build
+mkdir -p /root/backups
+docker exec medicare-mongo sh -c 'mongodump --username "$MONGO_INITDB_ROOT_USERNAME" \
+  --password "$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin \
+  --db medicare-ai --archive --gzip' > /root/backups/medicare-$(date +%F).archive.gz
+
+# Restore (replaces the collections in the archive)
+docker exec -i medicare-mongo sh -c 'mongorestore --username "$MONGO_INITDB_ROOT_USERNAME" \
+  --password "$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin \
+  --archive --gzip --drop' < /root/backups/medicare-YYYY-MM-DD.archive.gz
 ```
 
-Docker rebuilds only the changed layers (fast if only Python code changed).
+Collections: `users` (includes settings), `conversations`, `messages`, `v10Memories`,
+`analyticsEvents`.
 
-### MongoDB Backup
+### Resource usage
 
 ```bash
-# Create backup
-docker compose exec mongo mongodump \
-  --username root --password YOUR_STRONG_PASSWORD \
-  --authenticationDatabase admin \
-  --out /data/db/backup-$(date +%Y%m%d)
-
-# Copy backup to host
-docker compose cp mongo:/data/db/backup-$(date +%Y%m%d) ./backups/
+docker stats --no-stream medicare-backend medicare-mongo
 ```
-
-### Check Resource Usage
-
-```bash
-docker stats --no-stream
-```
-
-Expected: ~200-400 MB total RAM for all 3 containers.
 
 ---
 
-## Environment Variables Reference
+## Environment variables reference
 
 | Variable | Required | Example | Description |
 |----------|----------|---------|-------------|
-| `FIREBASE_PROJECT_ID` | Yes | `medicare-8fd9e` | Firebase project ID |
-| `FIREBASE_CLIENT_EMAIL` | Yes | `firebase-adminsdk-...@...iam.gserviceaccount.com` | Service account email |
-| `FIREBASE_PRIVATE_KEY` | Yes | `"-----BEGIN PRIVATE KEY-----\n..."` | Service account private key |
-| `MONGODB_URI` | Yes | `mongodb://root:PASS@mongo:27017/medicare-ai?authSource=admin` | MongoDB connection string |
-| `MONGO_ROOT_PASSWORD` | Yes | `strong-random-password` | Must match URI password |
+| `MONGO_ROOT_USERNAME` / `MONGO_ROOT_PASSWORD` | Yes | — | MongoDB root user, created when the volume is first initialised |
+| `MONGODB_URI` | Yes | `mongodb://USER:PASS@mongo:27017/medicare-ai?authSource=admin` | Backend connection string |
+| `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` | Yes | — | Firebase service account (keep the `\n` escapes in the key) |
 | `OPENROUTER_API_KEY` | Yes | `sk-or-v1-...` | OpenRouter API key |
-| `ANTHROPIC_MODEL` | No | `google/gemini-3.1-pro-preview` | Model ID on OpenRouter |
-| `TAVILY_API_KEY` | Yes | `tvly-...` | Tavily search API key |
-| `DOMAIN` | Yes* | `api.yourdomain.com` | Passed to Caddy for SSL (* set via env, not in .env) |
-| `ENVIRONMENT` | No | `production` | Affects logging verbosity |
-| `AUTH_MODE` | No | `firebase` | `firebase` for production |
-| `ALLOWED_ORIGINS` | No | `["https://yourdomain.com"]` | CORS allowed origins |
+| `OPENROUTER_BASE_URL` | No | `https://openrouter.ai/api` | The backend appends `/v1` |
+| `AI_MODEL` | No | `google/gemini-4-neon` | Primary model (legacy name `ANTHROPIC_MODEL` is still read) |
+| `AI_FALLBACK_MODELS` | No | `["openai/gpt-5.4"]` | Tried in order when the primary fails |
+| `AI_MAX_TOKENS` | No | `8192` | Output cap per round; reasoning tokens count against it |
+| `AI_REASONING_EFFORT` | No | `low` | Optional; unset uses the provider default |
+| `AI_TOOL_MIN_CALLS` | No | `2` | Searches required before a health answer |
+| `AI_TOOL_MAX_ROUNDS` / `AI_TOOL_MAX_CALLS` | No | `6` / `12` | Caps on tool rounds and total searches |
+| `TAVILY_API_KEY` | Yes | `tvly-...` | Tavily search key |
+| `TAVILY_INCLUDE_ANSWER` | No | `false` | Keep false: only numbered results may be cited |
+| `ENVIRONMENT` | No | `production` | |
+| `AUTH_MODE` / `MOCK_AI` | No | `firebase` / `false` | Production values |
+| `ALLOWED_ORIGINS` | No | `["https://mediguide.co"]` | CORS origins |
+| `CHAT_RATE_LIMIT_PER_HOUR` / `V10_RATE_LIMIT_PER_HOUR` | No | `30` / `10` | Per user |
+| `ANALYTICS_ENABLED` / `ANALYTICS_STORE_DB` | No | `true` / `true` | Event logging and storage |
 
 ---
 
 ## Troubleshooting
 
-### Caddy won't get SSL certificate
-- DNS must point to the droplet IP first
-- Ports 80 and 443 must be open (`ufw status`)
-- Check: `docker compose logs caddy`
-
-### Backend can't connect to MongoDB
-- `MONGODB_URI` must use `mongo` as hostname (the Docker service name)
-- `MONGO_ROOT_PASSWORD` must match the password in the URI
-- Check: `docker compose logs backend | grep mongo`
-
-### iOS app gets connection errors
-- Verify backend is healthy: `curl https://api.yourdomain.com/health`
-- Check `API_BASE_URL` in the iOS scheme matches the domain
-- No trailing slash on the URL
-
-### "AI response contained no text output"
-- Check `OPENROUTER_API_KEY` is valid
-- Check `ANTHROPIC_MODEL` is a valid model ID on OpenRouter
-- Check: `docker compose logs backend | grep AI_ERROR`
-
-### Rate limit errors (429)
-- Default: 30 chat requests per hour per user
-- Adjust `CHAT_RATE_LIMIT_PER_HOUR` in `.env`
+- **Every endpoint returns 500 ("Could not complete your request" in the app):** read
+  `docker logs medicare-backend`. On 2026-11-22 this was a legacy unique index on
+  `users.email`; startup now removes it.
+- **Backend cannot reach MongoDB:** `MONGODB_URI` must use the host `mongo` and the user
+  that exists in the data volume.
+- **Answers fail with `AI_ERROR`:** check `OPENROUTER_API_KEY`, and check that `AI_MODEL`
+  and `AI_FALLBACK_MODELS` are valid OpenRouter ids.
+- **Rate limit errors (429):** raise `CHAT_RATE_LIMIT_PER_HOUR` in `.env.prod` and
+  recreate the backend.
+- **iOS connection errors:** `curl https://api.mediguide.co/health`; check the
+  certificate with `certbot certificates`.
 
 ---
 
-## Security Checklist
+## Security checklist
 
-- [ ] MongoDB password is strong (not `localdev`)
-- [ ] `.env` file permissions: `chmod 600 .env`
-- [ ] MongoDB and backend ports are NOT exposed to internet (bound to 127.0.0.1)
-- [ ] Caddy auto-HTTPS is working (check `https://` works)
-- [ ] `ALLOWED_ORIGINS` is set to your domain only (not `*`)
-- [ ] Firebase private key is in `.env`, not committed to git
-- [ ] API keys (OpenRouter, Tavily) are in `.env`, not committed to git
-- [ ] UFW firewall is enabled with only 22, 80, 443 open
+- [ ] `.env.prod` is `chmod 600` and git-ignored
+- [ ] MongoDB and the backend are bound to `127.0.0.1` only
+- [ ] UFW allows only SSH, HTTP and HTTPS
+- [ ] `ALLOWED_ORIGINS` lists real origins only (never `*`)
+- [ ] No secret in any tracked file (`git grep` before every commit; the repo is public)
+- [ ] Rotate any key or password that was ever printed or committed

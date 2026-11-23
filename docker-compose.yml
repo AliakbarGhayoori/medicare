@@ -1,3 +1,12 @@
+# Local development only: MongoDB plus the backend image.
+#
+#   cp backend/.env.live.example backend/.env.live   # then fill in keys
+#   docker compose up -d
+#
+# Production uses docker-compose.prod.yml (see DEPLOY.md). The project name below
+# keeps this stack apart from production's "medicare" project and its data volume.
+name: medicare-dev
+
 services:
   mongo:
     image: mongo:7
@@ -5,7 +14,7 @@ services:
     ports:
       - "127.0.0.1:27017:27017"
     environment:
-      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-root}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-localdev}
     volumes:
       - mongo_data:/data/db
@@ -18,29 +27,18 @@ services:
     ports:
       - "127.0.0.1:8000:8000"
     env_file:
-      - .env
+      - path: backend/.env.live
+        required: false
+    environment:
+      # Inside the container MongoDB is reached by its service name, not localhost.
+      MONGODB_URI: mongodb://${MONGO_ROOT_USERNAME:-root}:${MONGO_ROOT_PASSWORD:-localdev}@mongo:27017/medicare-ai?authSource=admin
     depends_on:
       - mongo
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
       interval: 10s
       timeout: 5s
       retries: 3
 
-  caddy:
-    image: caddy:2-alpine
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    depends_on:
-      - backend
-
 volumes:
   mongo_data:
-  caddy_data:
-  caddy_config:

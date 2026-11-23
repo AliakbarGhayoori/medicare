@@ -10,8 +10,8 @@ jobs:
   backend-lint-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - run: pip install -r backend/requirements-dev.txt
@@ -34,7 +34,7 @@ jobs:
   ios-build-test:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install XcodeGen
         run: brew install xcodegen
       - name: Generate Xcode project
@@ -44,14 +44,26 @@ jobs:
           xcodebuild \
             -project ios/MediCareAI.xcodeproj \
             -scheme MediCareAI \
-            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -destination 'generic/platform=iOS Simulator' \
             -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO \
             build
+      - name: Pick an available iPhone simulator
+        id: simulator
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 -c '
+          import json, sys
+          devices = json.load(sys.stdin)["devices"]
+          runtimes = sorted((r for r in devices if ".iOS-" in r), reverse=True)
+          print(next(d["udid"] for r in runtimes for d in devices[r] if d["name"].startswith("iPhone")))
+          ')
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
       - name: Run iOS tests
         run: |
           xcodebuild \
             -project ios/MediCareAI.xcodeproj \
             -scheme MediCareAI \
-            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -destination "id=${{ steps.simulator.outputs.udid }}" \
             -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO \
             test

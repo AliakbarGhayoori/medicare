@@ -1,36 +1,66 @@
+# Production stack for api.mediguide.co (see DEPLOY.md).
+#
+#   docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build
+#
+# Host nginx terminates TLS and proxies to 127.0.0.1:8000 (deploy/nginx/).
+# .env.prod is git-ignored. It supplies MONGO_ROOT_USERNAME / MONGO_ROOT_PASSWORD
+# for the substitutions below and every backend setting, including MONGODB_URI.
+# Never write secrets into this file: the repository is public.
+name: medicare
+
 services:
   mongo:
     image: mongo:7
-    ports:
-      - "27017:27017"
+    container_name: medicare-mongo
+    restart: unless-stopped
     environment:
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: localdev
+      # Only used when the data volume is first initialised.
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:?set MONGO_ROOT_USERNAME in .env.prod}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?set MONGO_ROOT_PASSWORD in .env.prod}
     volumes:
       - mongo_data:/data/db
-    restart: unless-stopped
+      - mongo_config:/data/configdb
+    ports:
+      - "127.0.0.1:27017:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    # Give mongod time for a clean shutdown when the container is stopped or replaced.
+    stop_grace_period: 60s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   backend:
-    image: medicare-backend:latest
-    ports:
-      - "8000:8000"
-    env_file:
-      - backend/.env.live
-    environment:
-      # Override MongoDB URI to use Docker service name
-      MONGODB_URI: mongodb://root:localdev@mongo:27017/medicare-ai?authSource=admin
-      ENVIRONMENT: production
-      API_HOST: "0.0.0.0"
-      ANALYTICS_STORE_DB: "true"
-    depends_on:
-      - mongo
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: medicare-backend
     restart: unless-stopped
+    env_file:
+      - .env.prod
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      mongo:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
 
 volumes:
   mongo_data:
+  mongo_config:
