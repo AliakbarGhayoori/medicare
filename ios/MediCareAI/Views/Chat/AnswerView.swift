@@ -33,6 +33,12 @@ struct AnswerView: View {
     }
 }
 
+extension AnswerView: Equatable {
+    nonisolated static func == (lhs: AnswerView, rhs: AnswerView) -> Bool {
+        false
+    }
+}
+
 /// The heartbeat mark with "From 3 trusted sources" and a chip per source.
 struct SourcesRow: View {
     let citations: [Citation]

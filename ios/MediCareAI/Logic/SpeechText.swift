@@ -18,6 +18,16 @@ enum SpeechText {
         return parts.map(clean).filter { !$0.isEmpty }.map(endSentence).joined(separator: " ")
     }
 
+    /// What the red emergency card says, for Listen and VoiceOver.
+    static func emergencyIntro(number: String) -> String {
+        ""
+    }
+
+    /// The text Listen reads for an answer.
+    static func forMessage(_ message: Message, emergencyNumber: String) -> String {
+        plain(from: message.content)
+    }
+
     static func clean(_ text: String) -> String {
         var result = CitationText.plain(text)
         if let link = try? NSRegularExpression(pattern: #"\[([^\]]+)\]\([^)]*\)"#) {

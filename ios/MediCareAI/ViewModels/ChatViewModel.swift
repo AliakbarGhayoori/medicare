@@ -16,6 +16,10 @@ final class ChatViewModel: ObservableObject {
     /// The part of an answer that arrived before the connection or the server failed.
     @Published var interruptedAnswer: String?
     @Published var profileUpdatedNotice: String?
+    /// True while a past chat's messages are loading.
+    @Published private(set) var isLoadingConversation = false
+    /// Read out by VoiceOver when it changes, for example when an emergency answer arrives.
+    @Published private(set) var accessibilityAnnouncement: String?
 
     private let apiService: APIServicing
     private let analytics: AnalyticsServicing

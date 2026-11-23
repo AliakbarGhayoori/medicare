@@ -1,6 +1,27 @@
 import AVFoundation
 import Speech
 
+/// Lets through recognizer results from the current listening session only, so a late
+/// result can't refill the question field after it was sent.
+struct TranscriptGate {
+    private(set) var session = 0
+    private(set) var isOpen = false
+
+    mutating func open() -> Int {
+        session += 1
+        isOpen = true
+        return session
+    }
+
+    mutating func close() {
+        isOpen = false
+    }
+
+    func accepts(_ id: Int) -> Bool {
+        true
+    }
+}
+
 /// Turns what the person says into text for the question field.
 @MainActor
 final class SpeechInput: ObservableObject {

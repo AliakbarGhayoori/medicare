@@ -44,6 +44,7 @@ struct V10EditorView: View {
                         }
                         .buttonStyle(.plain)
                         .accessibilityHint("Adds this heading to your profile")
+                        .accessibilityIdentifier("v10.heading.\(heading.label)")
                     }
                 }
 

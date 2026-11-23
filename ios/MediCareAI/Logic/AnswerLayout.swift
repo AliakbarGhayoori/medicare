@@ -10,6 +10,8 @@ struct AnswerLayout: Equatable {
     var paragraphs: [String]
     var doThis: [String]
     var watchFor: [String]
+    /// Text after the "Do this" and "Watch for" lists, such as a closing question.
+    var closing: [String] = []
 
     var isEmpty: Bool {
         lead == nil && paragraphs.isEmpty && doThis.isEmpty && watchFor.isEmpty

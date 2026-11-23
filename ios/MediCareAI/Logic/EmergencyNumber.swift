@@ -31,6 +31,11 @@ enum EmergencyNumber {
         return Locale(identifier: "en_US").localizedString(forRegionCode: region.uppercased())
     }
 
+    /// The country as it reads after "in": "the United States", "Denmark".
+    static func countryPhrase(forRegion region: String?) -> String? {
+        countryName(forRegion: region)
+    }
+
     static var currentRegion: String? {
         Locale.current.region?.identifier
     }

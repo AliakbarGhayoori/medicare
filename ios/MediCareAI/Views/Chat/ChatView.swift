@@ -33,7 +33,7 @@ struct ChatView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
-                    if showsWelcome {
+                    if isWelcomeVisible {
                         ChatWelcome(topic: topic) { example in
                             draft = example
                             composerFocused = true
@@ -216,9 +216,14 @@ struct ChatView: View {
         viewModel.messages.last { $0.role == .assistant }
     }
 
-    private var showsWelcome: Bool {
+    private var isWelcomeVisible: Bool {
         conversation == nil && viewModel.messages.isEmpty && !viewModel.isStreaming
             && viewModel.interruptedAnswer == nil && viewModel.errorMessage == nil
+    }
+
+    /// The topic welcome with example questions shows only for an empty new chat.
+    nonisolated static func showsWelcome(conversation: Conversation?, starter: ChatStarter?, isEmpty: Bool) -> Bool {
+        conversation == nil && isEmpty
     }
 
     private var isOpeningConversation: Bool {

@@ -128,5 +128,26 @@ final class ChatViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.streamingText, "")
         XCTAssertFalse(viewModel.isStreaming)
         XCTAssertFalse(viewModel.isSearching)
+        XCTAssertNil(viewModel.accessibilityAnnouncement)
+    }
+
+    func testEmergencyAnswerIsAnnounced() async {
+        let emergency = ChatDonePayload(
+            messageId: "m2",
+            conversationId: "c1",
+            content: "Call now.",
+            citations: [],
+            confidence: "high",
+            requiresEmergencyCare: true
+        )
+        let api = ScriptedAPI([.init(events: [.token("Call now."), .done(emergency)])])
+        let viewModel = ChatViewModel(apiService: api, analytics: SilentAnalytics())
+
+        await viewModel.sendMessage("I have chest pain going down my arm")
+
+        XCTAssertEqual(
+            viewModel.accessibilityAnnouncement,
+            SpeechText.emergencyIntro(number: EmergencyNumber.current)
+        )
     }
 }

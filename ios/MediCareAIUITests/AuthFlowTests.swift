@@ -52,6 +52,22 @@ final class AuthFlowTests: XCTestCase {
         XCTAssertFalse(app.buttons["signup.submit"].isEnabled)
     }
 
+    func testWhatGetsSharedMentionsVoiceInput() throws {
+        let app = XCUIApplication.mock(signedIn: false, onboardingDone: false)
+        app.launch()
+
+        let next = app.buttons["onboarding.next"]
+        XCTAssertTrue(next.waitForExistence(timeout: 12))
+        next.tap()
+        _ = XCTWaiter.wait(for: [XCTestExpectation(description: "page")], timeout: 0.8)
+        next.tap()
+
+        let voice = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label CONTAINS[c] %@", "speech recognition"))
+            .firstMatch
+        XCTAssertTrue(voice.waitForExistence(timeout: 5), "The privacy page should say where spoken questions go")
+    }
+
     // MARK: - Asking
 
     func testAskFromHomeShowsASectionedAnswerWithSources() throws {
@@ -63,6 +79,7 @@ final class AuthFlowTests: XCTestCase {
 
         XCTAssertTrue(app.buttons["citation.1"].waitForExistence(timeout: 15), "Sources should show")
         XCTAssertTrue(app.buttons["citation.3"].exists)
+        XCTAssertGreaterThanOrEqual(app.buttons["citation.1"].frame.height, 44, "Source chips need a 44 pt touch target")
         XCTAssertTrue(app.element("answer.lead").exists, "The short answer should show")
         XCTAssertTrue(app.element("answer.doThis").exists)
         XCTAssertTrue(app.element("answer.watchFor").exists)
@@ -117,6 +134,10 @@ final class AuthFlowTests: XCTestCase {
         XCTAssertTrue(setup.waitForExistence(timeout: 8))
         setup.tap()
 
+        let heading = app.buttons["v10.heading.Conditions"]
+        XCTAssertTrue(heading.waitForExistence(timeout: 5))
+        XCTAssertGreaterThanOrEqual(heading.frame.height, 44, "Heading chips need a 44 pt touch target")
+
         app.type("Conditions: Hypertension", into: "v10.editor")
         app.buttons["v10.save"].tap()
 
@@ -158,6 +179,23 @@ final class AuthFlowTests: XCTestCase {
             object: toggle
         )
         XCTAssertEqual(XCTWaiter.wait(for: [changed], timeout: 8), .completed)
+    }
+
+    func testExtraLargeTextKeepsSettingsOpen() throws {
+        let app = XCUIApplication.mock(signedIn: true)
+        app.launch()
+
+        XCTAssertTrue(app.tabBars.buttons["Settings"].waitForExistence(timeout: 15))
+        app.tabBars.buttons["Settings"].tap()
+        let toggle = app.switches["settings.fontSize"]
+        XCTAssertTrue(toggle.waitForExistence(timeout: 8))
+        let before = toggle.value as? String
+
+        toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
+        _ = XCTWaiter.wait(for: [XCTestExpectation(description: "save")], timeout: 2)
+
+        XCTAssertTrue(app.element("screen.settings").exists, "Settings should stay open")
+        XCTAssertNotEqual(app.switches["settings.fontSize"].value as? String, before)
     }
 
     func testLogOutReturnsToSignIn() throws {

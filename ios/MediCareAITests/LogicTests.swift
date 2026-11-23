@@ -83,7 +83,8 @@ final class AnswerLayoutTests: XCTestCase {
 
     func testLoneBulletMarkerIsHeldBackWhileStreaming() {
         let layout = AnswerLayout.parse("Yes.\nDo this:\n-", isPartial: true)
-        XCTAssertEqual(layout.lead, "Yes.")
+        XCTAssertNil(layout.lead, "One piece of text is never the short answer")
+        XCTAssertEqual(layout.paragraphs, ["Yes."])
         XCTAssertEqual(layout.doThis, [])
     }
 
@@ -96,6 +97,122 @@ final class AnswerLayoutTests: XCTestCase {
             previous = count
         }
         XCTAssertEqual(AnswerLayout.parse(sectioned).unitCount, 5)
+    }
+
+    // MARK: Text after the lists
+
+    func testQuestionAfterTheListsIsNotAWarningSign() {
+        let layout = AnswerLayout.parse(sectioned + "\nWould you like tips for a diabetes-friendly breakfast?")
+        XCTAssertEqual(layout.watchFor, ["A racing heart or upset stomach after coffee. Tell your doctor if it happens."])
+        XCTAssertEqual(layout.closing, ["Would you like tips for a diabetes-friendly breakfast?"])
+    }
+
+    func testOlderAnswerKeepsWarningsAndQuestionsOutOfDoThis() {
+        let text = """
+        Dizziness like this is often linked to dehydration [1].
+        **What to do next:**
+        1. Drink more water.
+        2. Stand up slowly.
+        **Seek immediate medical attention if:**
+        - You faint or have chest pain.
+        How long has this been happening?
+        """
+        let layout = AnswerLayout.parse(text)
+        XCTAssertEqual(layout.lead, "Dizziness like this is often linked to dehydration [1].")
+        XCTAssertEqual(layout.doThis, ["Drink more water.", "Stand up slowly."])
+        XCTAssertEqual(layout.watchFor, ["You faint or have chest pain."])
+        XCTAssertEqual(layout.closing, ["How long has this been happening?"])
+    }
+
+    func testCrisisLinesAfterTheListsStayOutOfTheBoxes() {
+        let crisis = """
+
+        If you are thinking about harming yourself, please reach out now:
+        - In immediate danger: call your local emergency number (112 in Europe).
+        - US: call or text 988 (Suicide & Crisis Lifeline).
+        - Other countries: find a free, confidential helpline at https://findahelpline.com
+        """
+        let layout = AnswerLayout.parse(sectioned + crisis)
+        XCTAssertEqual(layout.watchFor.count, 1)
+        XCTAssertEqual(layout.closing, [
+            "If you are thinking about harming yourself, please reach out now:",
+            "• In immediate danger: call your local emergency number (112 in Europe).",
+            "• US: call or text 988 (Suicide & Crisis Lifeline).",
+            "• Other countries: find a free, confidential helpline at https://findahelpline.com",
+        ])
+    }
+
+    func testUnknownHeadingAfterTheListsEndsTheBox() {
+        let layout = AnswerLayout.parse("Yes.\nRest helps [1].\nDo this:\n- Rest.\n**Good to know**\nMost colds clear up in a week.")
+        XCTAssertEqual(layout.doThis, ["Rest."])
+        XCTAssertEqual(layout.closing, ["**Good to know**", "Most colds clear up in a week."])
+    }
+
+    func testMoreWaysToSayWatchFor() {
+        let headings = [
+            "Call your doctor if:", "See a doctor if:", "Seek immediate medical attention if:",
+            "Red flags:", "When to seek emergency care:", "Go to the emergency room if:",
+        ]
+        for heading in headings {
+            let layout = AnswerLayout.parse("Short answer.\n\(heading)\n- The fever lasts three days.")
+            XCTAssertEqual(layout.watchFor, ["The fever lasts three days."], heading)
+        }
+    }
+
+    func testHeadingsWithBackticksOrSingleStars() {
+        let layout = AnswerLayout.parse("Yes.\nIt helps [1].\n`Do this:`\n- Rest.\n*Watch for:*\n- Fever.")
+        XCTAssertEqual(layout.doThis, ["Rest."])
+        XCTAssertEqual(layout.watchFor, ["Fever."])
+    }
+
+    // MARK: Streaming
+
+    func testOneLineAnswerNeverStreamsAsTheShortAnswer() {
+        let text = "You're very welcome! How are you feeling today?\n"
+        for end in text.indices {
+            XCTAssertNil(AnswerLayout.parse(String(text[...end]), isPartial: true).lead)
+        }
+        XCTAssertNil(AnswerLayout.parse(text).lead)
+    }
+
+    func testLongFirstLineNeverStreamsAsTheShortAnswer() {
+        let text = String(repeating: "Blood pressure changes during the day. ", count: 6) + "\nCheck it at the same time."
+        for end in text.indices {
+            XCTAssertNil(AnswerLayout.parse(String(text[...end]), isPartial: true).lead)
+        }
+    }
+
+    func testHalfFinishedBoldHeadingShowsNoStrayStar() {
+        let layout = AnswerLayout.parse("Yes.\nCoffee is fine.\n**Do this:*", isPartial: true)
+        XCTAssertEqual(layout.doThis, [])
+    }
+
+    func testStreamingShapeNeverGoesBackwards() {
+        let samples = [
+            sectioned,
+            "Yes, for most people.\nCoffee is fine [1].\n**Do this:**\n- Rest.\n**Watch for:**\n- Fever.\nAnything else on your mind?",
+            "Hello! I can help with health questions.",
+        ]
+        for sample in samples {
+            var previous = AnswerLayout.parse("", isPartial: true)
+            for end in sample.indices {
+                let prefix = String(sample[...end])
+                let layout = AnswerLayout.parse(prefix, isPartial: true)
+                let at = "at: \(prefix.suffix(24))"
+                if previous.lead != nil {
+                    XCTAssertNotNil(layout.lead, "Lost the short answer \(at)")
+                }
+                XCTAssertGreaterThanOrEqual(layout.doThis.count, previous.doThis.count, "Do this shrank \(at)")
+                XCTAssertGreaterThanOrEqual(layout.watchFor.count, previous.watchFor.count, "Watch for shrank \(at)")
+                XCTAssertGreaterThanOrEqual(layout.unitCount, previous.unitCount, "Lost text \(at)")
+                previous = layout
+            }
+            XCTAssertEqual(
+                AnswerLayout.parse(sample, isPartial: true),
+                AnswerLayout.parse(sample),
+                "The last streamed layout should equal the final one"
+            )
+        }
     }
 }
 
@@ -137,6 +254,14 @@ final class EmergencyNumberTests: XCTestCase {
         XCTAssertEqual(EmergencyNumber.countryName(forRegion: "DK"), "Denmark")
         XCTAssertNil(EmergencyNumber.countryName(forRegion: nil))
     }
+
+    func testCountryPhraseReadsNaturallyAfterIn() {
+        XCTAssertEqual(EmergencyNumber.countryPhrase(forRegion: "US"), "the United States")
+        XCTAssertEqual(EmergencyNumber.countryPhrase(forRegion: "GB"), "the United Kingdom")
+        XCTAssertEqual(EmergencyNumber.countryPhrase(forRegion: "NL"), "the Netherlands")
+        XCTAssertEqual(EmergencyNumber.countryPhrase(forRegion: "DK"), "Denmark")
+        XCTAssertNil(EmergencyNumber.countryPhrase(forRegion: nil))
+    }
 }
 
 final class HealthProfileSectionsTests: XCTestCase {
@@ -175,9 +300,49 @@ final class HealthProfileSectionsTests: XCTestCase {
         XCTAssertEqual(sections[0].items, ["Takes metformin daily.", "Walks every morning."])
     }
 
-    func testOtherLanguagesStillShowSomething() {
+    func testOtherLanguagesKeepTheirOwnHeadings() {
         let sections = HealthProfileSections.parse("Medicin:\n- Metformin\nTilstande:\n- Diabetes")
-        XCTAssertEqual(sections.map(\.title), ["Medicines", "Tilstande"])
+        XCTAssertEqual(sections.map(\.title), ["Medicin", "Tilstande"])
+        XCTAssertEqual(sections.map(\.kind), [.medicines, .other])
+    }
+
+    func testLabelledLinesStayAsWritten() {
+        let digest = """
+        Medications:
+        - Metformin 500 mg
+        Metformin dosage: 500 mg twice daily
+        Recent HbA1c: 7.2%
+        Drug interactions to avoid: grapefruit
+        Family history: Heart disease, Diabetes
+        """
+        let sections = HealthProfileSections.parse(digest)
+        XCTAssertEqual(sections.map(\.title), ["Medicines"])
+        XCTAssertEqual(sections.first?.items, [
+            "Metformin 500 mg",
+            "Metformin dosage: 500 mg twice daily",
+            "Recent HbA1c: 7.2%",
+            "Drug interactions to avoid: grapefruit",
+            "Family history: Heart disease, Diabetes",
+        ])
+    }
+
+    func testBoldHeadingsWithoutAColon() {
+        let sections = HealthProfileSections.parse("**Conditions**\n- Asthma\n**Medications**\n- Salbutamol inhaler")
+        XCTAssertEqual(sections.map(\.title), ["Conditions", "Medicines"])
+        XCTAssertEqual(sections.last?.items, ["Salbutamol inhaler"])
+    }
+
+    func testAgeMatchesOnlyAsAWholeWord() {
+        let sections = HealthProfileSections.parse("Dosage notes:\n- Half a tablet at night")
+        XCTAssertEqual(sections.map(\.title), ["Dosage notes"])
+        XCTAssertEqual(sections.map(\.kind), [.other])
+    }
+
+    func testSameHeadingTwiceMakesOneCardWithUniqueIDs() {
+        let sections = HealthProfileSections.parse("Medications:\n- Metformin\nSupplements:\n- Vitamin D\nMedications:\n- Amlodipine")
+        XCTAssertEqual(sections.map(\.title), ["Medicines", "Supplements"])
+        XCTAssertEqual(sections.first?.items, ["Metformin", "Amlodipine"])
+        XCTAssertEqual(Set(sections.map(\.id)).count, sections.count)
     }
 
     func testEmptyDigest() {
@@ -238,6 +403,99 @@ final class SourceNameTests: XCTestCase {
     func testUnknownHostsAndNamesPassThrough() {
         XCTAssertEqual(SourceName.display(for: "example.com"), "example.com")
         XCTAssertEqual(SourceName.display(for: "Mayo Clinic"), "Mayo Clinic")
+    }
+}
+
+final class EmergencySpeechTests: XCTestCase {
+    func testEmergencyAnswerIsReadWithTheCallFirst() {
+        XCTAssertEqual(
+            SpeechText.emergencyIntro(number: "112"),
+            "This could be an emergency. Call 112 now. Don't wait to see if it gets better."
+        )
+        let message = Message(
+            id: "m1", role: .assistant, content: "Sit down and rest.", citations: [], confidence: nil,
+            requiresEmergencyCare: true, createdAt: Date(timeIntervalSince1970: 0)
+        )
+        XCTAssertEqual(
+            SpeechText.forMessage(message, emergencyNumber: "112"),
+            "This could be an emergency. Call 112 now. Don't wait to see if it gets better. Sit down and rest."
+        )
+    }
+
+    func testOrdinaryAnswerIsReadAsWritten() {
+        let message = Message(
+            id: "m1", role: .assistant, content: "Rest helps.", citations: [], confidence: nil,
+            requiresEmergencyCare: false, createdAt: Date(timeIntervalSince1970: 0)
+        )
+        XCTAssertEqual(SpeechText.forMessage(message, emergencyNumber: "112"), "Rest helps.")
+    }
+
+    /// Guard: text after the lists is still read, at the end.
+    func testClosingTextIsReadLast() {
+        let text = SpeechText.plain(from: "Yes.\nIt helps.\nDo this:\n- Rest.\nWatch for:\n- Fever.\nAnything else?")
+        XCTAssertTrue(text.hasSuffix("Fever. Anything else?"), text)
+    }
+}
+
+@MainActor
+final class AnswerTextTests: XCTestCase {
+    func testBoldAcrossASourceNumberShowsNoStars() {
+        let text = AnswerText.attributed("**Take it with food [1] every day.**")
+        XCTAssertFalse(String(text.characters).contains("*"), String(text.characters))
+        XCTAssertTrue(text.runs.contains { $0.link == URL(string: "medicare-cite://1") })
+        let bold = text.runs.filter { $0.inlinePresentationIntent?.contains(.stronglyEmphasized) == true }
+        XCTAssertTrue(bold.contains { String(text[$0.range].characters).contains("every day") })
+    }
+
+    func testSourceNumbersStillOpenTheirSource() {
+        let text = AnswerText.attributed("Rest helps [1, 2].")
+        let links = text.runs.compactMap { $0.link }
+        XCTAssertEqual(links, [URL(string: "medicare-cite://1"), URL(string: "medicare-cite://2")].compactMap { $0 })
+    }
+}
+
+final class TranscriptGateTests: XCTestCase {
+    func testResultsAfterStopAreIgnored() {
+        var gate = TranscriptGate()
+        let session = gate.open()
+        XCTAssertTrue(gate.accepts(session))
+        gate.close()
+        XCTAssertFalse(gate.accepts(session))
+    }
+
+    func testResultsFromAnEarlierSessionAreIgnored() {
+        var gate = TranscriptGate()
+        let first = gate.open()
+        gate.close()
+        let second = gate.open()
+        XCTAssertFalse(gate.accepts(first))
+        XCTAssertTrue(gate.accepts(second))
+    }
+}
+
+@MainActor
+final class ChatScreenTests: XCTestCase {
+    func testQuestionFromHomeSkipsTheWelcome() {
+        XCTAssertFalse(ChatView.showsWelcome(conversation: nil, starter: .question("Is coffee okay?"), isEmpty: true))
+        XCTAssertTrue(ChatView.showsWelcome(conversation: nil, starter: .topic(.medicines), isEmpty: true))
+        XCTAssertTrue(ChatView.showsWelcome(conversation: nil, starter: nil, isEmpty: true))
+        XCTAssertFalse(ChatView.showsWelcome(conversation: nil, starter: nil, isEmpty: false))
+    }
+
+    func testFinishedAnswerIsOnlyRedrawnWhenItChanges() {
+        let message = Message(
+            id: "m1", role: .assistant, content: "Yes.", citations: [], confidence: nil,
+            requiresEmergencyCare: false, createdAt: Date(timeIntervalSince1970: 0)
+        )
+        let edited = Message(
+            id: "m1", role: .assistant, content: "No.", citations: [], confidence: nil,
+            requiresEmergencyCare: false, createdAt: Date(timeIntervalSince1970: 0)
+        )
+        let first = AnswerView(message: message, onCitation: { _ in })
+        let again = AnswerView(message: message, onCitation: { _ in })
+        let changed = AnswerView(message: edited, onCitation: { _ in })
+        XCTAssertTrue(first == again)
+        XCTAssertFalse(first == changed)
     }
 }
 

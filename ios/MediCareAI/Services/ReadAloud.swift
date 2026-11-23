@@ -1,16 +1,42 @@
 import AVFoundation
 import NaturalLanguage
 
+/// Takes the audio for speaking and gives it back afterwards.
+protocol AudioSessionControlling {
+    func activateForSpeech()
+    func deactivate()
+}
+
+struct SystemAudioSession: AudioSessionControlling {
+    func activateForSpeech() {
+        let session = AVAudioSession.sharedInstance()
+        try? session.setCategory(.playback, mode: .spokenAudio, options: .duckOthers)
+        try? session.setActive(true)
+    }
+
+    /// Lets music or other audio that was turned down get loud again.
+    func deactivate() {
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+    }
+}
+
 /// Reads an answer aloud in the language it is written in.
 @MainActor
 final class ReadAloud: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
     @Published private(set) var isSpeaking = false
 
     private let synthesizer = AVSpeechSynthesizer()
+    private let session: AudioSessionControlling
 
-    override init() {
+    init(session: AudioSessionControlling = SystemAudioSession()) {
+        self.session = session
         super.init()
         synthesizer.delegate = self
+    }
+
+    /// Called when the speech ends by itself.
+    func finished() {
+        isSpeaking = false
     }
 
     func toggle(_ answer: String) {
