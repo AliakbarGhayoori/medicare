@@ -50,7 +50,7 @@ final class V10ViewModel: ObservableObject {
     func save() async {
         let trimmed = editableDigest.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
-            errorMessage = "Please add at least one detail to your health profile."
+            errorMessage = "Write at least one thing about your health before saving."
             return
         }
 
@@ -62,7 +62,7 @@ final class V10ViewModel: ObservableObject {
             let updated = try await apiService.updateV10(digest: trimmed)
             digest = updated
             editableDigest = updated.digest ?? ""
-            noticeMessage = "Health profile saved."
+            noticeMessage = "Your health profile is saved."
             analytics.track(
                 "v10_edited",
                 properties: ["source": "manual", "version": String(updated.version)]
@@ -86,7 +86,7 @@ final class V10ViewModel: ObservableObject {
             let updated = try await apiService.revertV10()
             digest = updated
             editableDigest = updated.digest ?? ""
-            noticeMessage = "Previous profile version restored."
+            noticeMessage = "Your profile is back to how it was."
             analytics.track(
                 "v10_edited",
                 properties: ["source": "revert", "version": String(updated.version)]

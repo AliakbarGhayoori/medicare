@@ -1,60 +1,92 @@
 import SwiftUI
 
+/// "My health": what MediCare AI knows about the person, in clear sections.
 struct V10MemoryView: View {
     @EnvironmentObject private var v10ViewModel: V10ViewModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    @State private var showsEditor = false
+
+    private var digestText: String? {
+        guard let text = v10ViewModel.digest?.digest?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !text.isEmpty else { return nil }
+        return text
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            if v10ViewModel.isLoading {
-                ProgressView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if let digest = v10ViewModel.digest?.digest, !digest.isEmpty {
-                filledState(digest: digest)
-            } else {
-                emptyState
-            }
-        }
-        .overlay(alignment: .bottom) {
-            if let notice = v10ViewModel.noticeMessage {
-                ToastView(message: notice)
-                    .padding(.bottom, 16)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                    .onAppear {
-                        Task {
-                            try? await Task.sleep(for: .seconds(3))
-                            withAnimation { v10ViewModel.noticeMessage = nil }
-                        }
-                    }
-            }
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                ScreenTitle(text: "My health")
+                Text("What MediCare AI knows about you. It uses this to fit every answer to you.")
+                    .font(.subheadline)
+                    .foregroundStyle(Color.mcInk2)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 6)
 
-            if let error = v10ViewModel.errorMessage {
-                ToastView(message: error, icon: "exclamationmark.circle.fill", iconColor: .mcEmergencyRed)
-                    .padding(.bottom, 16)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                    .onAppear {
-                        Task {
-                            try? await Task.sleep(for: .seconds(4))
-                            withAnimation { v10ViewModel.errorMessage = nil }
+                Group {
+                    if let digestText {
+                        filled(digestText)
+                    } else if v10ViewModel.isLoading {
+                        HStack(spacing: 10) {
+                            HeartbeatActivity()
+                            Text("Loading your profile…")
+                                .font(.subheadline)
+                                .foregroundStyle(Color.mcInk2)
                         }
+                        .padding(.top, 24)
+                    } else if let error = v10ViewModel.errorMessage, v10ViewModel.digest == nil {
+                        loadFailed(error)
+                    } else {
+                        empty
                     }
+                }
+                .padding(.top, 18)
+
+                Label {
+                    Text("Only you can see this. Change or delete it any time.")
+                } icon: {
+                    Image(systemName: "lock.fill")
+                }
+                .font(.subheadline)
+                .foregroundStyle(Color.mcInk2)
+                .padding(.top, 18)
+                .padding(.horizontal, 4)
             }
+            .padding(.horizontal, 16)
+            .padding(.top, 4)
+            .padding(.bottom, 32)
         }
+        .mcScreenBackground()
         .accessibilityIdentifier("screen.healthProfile")
-        .background(Color.mcBackground)
-        .navigationTitle("Health Profile")
+        .navigationTitle("My health")
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            if v10ViewModel.digest?.digest != nil, !(v10ViewModel.digest?.digest?.isEmpty ?? true) {
+            if digestText != nil {
                 ToolbarItem(placement: .topBarTrailing) {
-                    NavigationLink {
-                        V10EditorView()
-                    } label: {
-                        Image(systemName: "pencil")
+                    Button("Edit") {
+                        showsEditor = true
                     }
+                    .accessibilityLabel("Edit my health profile")
                     .accessibilityIdentifier("v10.edit")
-                    .accessibilityLabel("Edit health profile")
                 }
             }
         }
+        .navigationDestination(isPresented: $showsEditor) {
+            V10EditorView()
+        }
+        .overlay(alignment: .top) {
+            if let notice = v10ViewModel.noticeMessage {
+                ToastView(message: notice)
+                    .padding(.top, 8)
+                    .padding(.horizontal, 16)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .task {
+                        try? await Task.sleep(for: .seconds(3))
+                        v10ViewModel.noticeMessage = nil
+                    }
+            }
+        }
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: v10ViewModel.noticeMessage)
         .task {
             await v10ViewModel.load()
         }
@@ -63,193 +95,152 @@ struct V10MemoryView: View {
         }
     }
 
-    // MARK: - Filled State
+    // MARK: - States
 
-    private func filledState(digest: String) -> some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                let sections = parseDigestSections(digest)
+    @ViewBuilder
+    private func filled(_ text: String) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if let digest = v10ViewModel.digest, let note = ProfileUpdateNote.text(for: digest) {
+                updateNote(note, canUndo: digest.canRevert)
+            }
 
-                ForEach(sections, id: \.title) { section in
-                    profileSection(title: section.title, icon: section.icon, items: section.items)
-                }
-
-                // Metadata
-                if v10ViewModel.digest?.updatedAt != nil || v10ViewModel.digest?.lastUpdateSource != nil {
-                    HStack(spacing: 16) {
-                        if let updatedAt = v10ViewModel.digest?.updatedAt {
-                            Label(DateFormatting.longDateTime.string(from: updatedAt), systemImage: "clock")
-                                .font(.caption)
-                                .foregroundStyle(Color.mcTextSecondary)
-                        }
-                        if let source = v10ViewModel.digest?.lastUpdateSource {
-                            Label(source == "auto" ? "Updated by AI" : "Updated by you", systemImage: source == "auto" ? "cpu" : "pencil")
-                                .font(.caption)
-                                .foregroundStyle(Color.mcTextSecondary)
-                        }
-                    }
-                    .padding(.top, 4)
-                }
-
-                if v10ViewModel.digest?.canRevert == true {
-                    Button {
-                        Task { await v10ViewModel.revertToPrevious() }
-                    } label: {
-                        if v10ViewModel.isReverting {
-                            ProgressView().frame(maxWidth: .infinity)
-                        } else {
-                            Text("Restore Previous Version").frame(maxWidth: .infinity)
-                        }
-                    }
-                    .buttonStyle(.bordered)
+            let sections = HealthProfileSections.parse(text)
+            if sections.isEmpty {
+                Text(text)
+                    .font(.body)
+                    .foregroundStyle(Color.mcInk)
+                    .mcCard()
+            } else {
+                ForEach(sections) { section in
+                    ProfileSectionCard(section: section)
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 8)
-            .padding(.bottom, 24)
         }
     }
 
-    private func profileSection(title: String, icon: String, items: [String]) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label(title, systemImage: icon)
+    private func updateNote(_ note: String, canUndo: Bool) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            Image(systemName: "sparkles")
+                .font(.headline)
+                .foregroundStyle(Color.mcCoralInk)
+                .accessibilityHidden(true)
+            Text(note)
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(Color.mcAccent)
+                .foregroundStyle(Color.mcCoralInk)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+            if canUndo {
+                Button {
+                    Task { await v10ViewModel.revertToPrevious() }
+                } label: {
+                    if v10ViewModel.isReverting {
+                        ProgressView()
+                    } else {
+                        Text("Undo")
+                            .font(.subheadline.weight(.semibold))
+                    }
+                }
+                .foregroundStyle(Color.mcCoralInk)
+                .padding(.horizontal, 14)
+                .frame(minHeight: 44)
+                .background(Color.mcSurface.opacity(0.7), in: Capsule())
+                .disabled(v10ViewModel.isReverting)
+                .accessibilityLabel("Undo the change from your chat")
+                .accessibilityIdentifier("v10.undo")
+            }
+        }
+        .padding(.leading, 14)
+        .padding(.trailing, 8)
+        .padding(.vertical, 8)
+        .background(Color.mcCoralTint, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .accessibilityElement(children: .contain)
+    }
 
-            VStack(alignment: .leading, spacing: 6) {
-                ForEach(items, id: \.self) { item in
+    private var empty: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 12) {
+                IconTile(systemName: "heart.text.square.fill", color: .tileRed, size: 36)
+                Text("Nothing here yet")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(Color.mcInk)
+            }
+            Text("As you chat, MediCare AI notes your conditions, medicines and allergies here. You can also add them yourself.")
+                .font(.body)
+                .foregroundStyle(Color.mcInk2)
+                .fixedSize(horizontal: false, vertical: true)
+            Button("Add my details") {
+                showsEditor = true
+            }
+            .buttonStyle(PrimaryButtonStyle())
+            .accessibilityIdentifier("v10.setup")
+        }
+        .mcCard(padding: 18)
+    }
+
+    private func loadFailed(_ message: String) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(message)
+                .font(.body)
+                .foregroundStyle(Color.mcInk)
+                .fixedSize(horizontal: false, vertical: true)
+            Button("Try again") {
+                Task { await v10ViewModel.load() }
+            }
+            .buttonStyle(SecondaryButtonStyle(tint: .mcBlueText))
+        }
+        .mcCard()
+    }
+}
+
+/// One profile section as a Settings-style card: a coloured tile, the title and the items.
+private struct ProfileSectionCard: View {
+    let section: HealthProfileSections.Section
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 12) {
+                IconTile(systemName: style.symbol, color: style.color)
+                Text(section.title)
+                    .font(.headline)
+                    .foregroundStyle(Color.mcInk)
+                    .accessibilityAddTraits(.isHeader)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+
+            ForEach(Array(section.items.enumerated()), id: \.offset) { _, item in
+                VStack(alignment: .leading, spacing: 0) {
+                    Divider()
+                        .overlay(Color.mcLine)
                     Text(item)
                         .font(.body)
-                        .foregroundStyle(Color.mcTextPrimary)
+                        .foregroundStyle(Color.mcInk)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.vertical, 11)
+                        .padding(.trailing, 14)
                 }
+                .padding(.leading, 56)
             }
         }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.mcBackgroundSecondary.opacity(0.6))
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .padding(.bottom, 2)
+        .background(Color.mcSurface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .strokeBorder(Color.mcLine.opacity(0.7), lineWidth: 0.5)
+        )
+        .accessibilityElement(children: .contain)
     }
 
-    // MARK: - Empty State
-
-    private var emptyState: some View {
-        VStack(spacing: 16) {
-            Spacer()
-
-            ImagePlate(name: "v10-empty", maxSize: 180)
-
-            Text("Your Health Profile")
-                .font(.title3)
-                .bold()
-                .foregroundStyle(Color.mcTextPrimary)
-
-            Text("Start a conversation and your conditions, medications, and concerns will be remembered here automatically.")
-                .font(.callout)
-                .foregroundStyle(Color.mcTextSecondary)
-                .multilineTextAlignment(.center)
-
-            NavigationLink {
-                V10EditorView()
-            } label: {
-                Text("Add Manually")
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(Color.mcAccent)
-            .controlSize(.large)
-            .accessibilityIdentifier("v10.setup")
-
-            Spacer()
+    private var style: (symbol: String, color: Color) {
+        switch section.kind {
+        case .about: return ("person.fill", .tileSlate)
+        case .conditions: return ("stethoscope", .tileRed)
+        case .medicines: return ("pills.fill", .tileTeal)
+        case .allergies: return ("nosign", .tileOrange)
+        case .concerns: return ("waveform.path.ecg", .tileViolet)
+        case .history: return ("clock.arrow.circlepath", .tileBlue)
+        case .other: return ("note.text", .tileGreen)
         }
-        .padding(.horizontal, 24)
-    }
-
-    // MARK: - Digest Parser
-
-    private struct ProfileSection {
-        let title: String
-        let icon: String
-        let items: [String]
-    }
-
-    private func parseDigestSections(_ digest: String) -> [ProfileSection] {
-        var sections: [ProfileSection] = []
-        var currentTitle = ""
-        var currentItems: [String] = []
-        var preambleItems: [String] = []
-
-        let lines = digest.components(separatedBy: .newlines)
-
-        for line in lines {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            if trimmed.isEmpty { continue }
-
-            if trimmed.hasPrefix("#") {
-                // Save preamble lines collected before first heading
-                if currentTitle.isEmpty && !preambleItems.isEmpty {
-                    sections.append(ProfileSection(
-                        title: "Health Summary",
-                        icon: "heart.text.square",
-                        items: preambleItems
-                    ))
-                    preambleItems = []
-                }
-
-                // Save previous section
-                if !currentTitle.isEmpty && !currentItems.isEmpty {
-                    sections.append(ProfileSection(
-                        title: currentTitle,
-                        icon: iconForSection(currentTitle),
-                        items: currentItems
-                    ))
-                }
-                currentTitle = trimmed.replacingOccurrences(of: "#", with: "").trimmingCharacters(in: .whitespaces)
-                currentItems = []
-            } else {
-                let item: String
-                if trimmed.hasPrefix("-") || trimmed.hasPrefix("*") {
-                    item = String(trimmed.dropFirst()).trimmingCharacters(in: .whitespaces)
-                } else {
-                    item = trimmed
-                }
-
-                if currentTitle.isEmpty {
-                    preambleItems.append(item)
-                } else {
-                    currentItems.append(item)
-                }
-            }
-        }
-
-        // Save any remaining preamble (no headings at all)
-        if !preambleItems.isEmpty {
-            sections.append(ProfileSection(
-                title: "Health Summary",
-                icon: "heart.text.square",
-                items: preambleItems
-            ))
-        }
-
-        // Save last section
-        if !currentTitle.isEmpty && !currentItems.isEmpty {
-            sections.append(ProfileSection(
-                title: currentTitle,
-                icon: iconForSection(currentTitle),
-                items: currentItems
-            ))
-        }
-
-        return sections
-    }
-
-    private func iconForSection(_ title: String) -> String {
-        let lower = title.lowercased()
-        if lower.contains("medication") || lower.contains("drug") { return "pills" }
-        if lower.contains("condition") || lower.contains("diagnos") { return "stethoscope" }
-        if lower.contains("allerg") { return "exclamationmark.triangle" }
-        if lower.contains("concern") || lower.contains("recent") { return "clock" }
-        if lower.contains("history") { return "book" }
-        if lower.contains("age") || lower.contains("demo") { return "person" }
-        return "heart.text.square"
     }
 }

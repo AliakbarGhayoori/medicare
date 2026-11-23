@@ -64,4 +64,31 @@ final class HomeLogicTests: XCTestCase {
     func testChatPreviewOfNothingIsEmpty() {
         XCTAssertEqual(ChatPreview.text(""), "")
     }
+
+    private func digest(source: String?, updatedAt: Date?) -> V10Digest {
+        V10Digest(
+            digest: "Conditions:\n- Type 2 diabetes",
+            previousDigest: nil,
+            canRevert: false,
+            version: 2,
+            updatedAt: updatedAt,
+            lastUpdateSource: source
+        )
+    }
+
+    func testProfileNoteNamesTheChatDay() {
+        let note = ProfileUpdateNote.text(
+            for: digest(source: "auto", updatedAt: day("2026-11-21T09:00:00Z")),
+            now: now,
+            calendar: calendar,
+            locale: locale
+        )
+        XCTAssertEqual(note, "Updated from your chat on Saturday")
+    }
+
+    func testProfileNoteOnlyForChatUpdates() {
+        XCTAssertNil(ProfileUpdateNote.text(for: digest(source: "manual", updatedAt: now), now: now))
+        XCTAssertNil(ProfileUpdateNote.text(for: digest(source: nil, updatedAt: now), now: now))
+        XCTAssertNil(ProfileUpdateNote.text(for: digest(source: "auto", updatedAt: nil), now: now))
+    }
 }

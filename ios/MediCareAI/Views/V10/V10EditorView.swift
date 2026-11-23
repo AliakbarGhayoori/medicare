@@ -1,148 +1,127 @@
 import SwiftUI
 
+/// Edit the health profile as plain text, one thing per line, with optional headings.
 struct V10EditorView: View {
     @EnvironmentObject private var v10ViewModel: V10ViewModel
     @Environment(\.dismiss) private var dismiss
 
     @State private var baselineDigest = ""
-    @State private var showDiscardConfirmation = false
+    @State private var showsDiscardConfirmation = false
+    @FocusState private var editorFocused: Bool
 
     private let maxCharacters = 5000
 
-    private let starterChips: [(label: String, template: String)] = [
-        ("Medication", "- Medications: "),
-        ("Condition", "- Conditions: "),
-        ("Allergy", "- Allergies: "),
-        ("Recent concern", "- Recent concerns: "),
+    private let headings: [(label: String, symbol: String)] = [
+        ("Conditions", "stethoscope"),
+        ("Medicines", "pills.fill"),
+        ("Allergies", "nosign"),
+        ("Recent concerns", "waveform.path.ecg"),
+        ("About me", "person.fill"),
     ]
 
+    private var count: Int { v10ViewModel.editableDigest.count }
+
     var body: some View {
-        VStack(spacing: 0) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    // Guidance header
-                    if v10ViewModel.editableDigest.isEmpty {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("What should your health profile include?")
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("Write one thing per line. Tap a heading to start a section.")
+                    .font(.subheadline)
+                    .foregroundStyle(Color.mcInk2)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                FlowLayout(spacing: 8, lineSpacing: 8) {
+                    ForEach(headings, id: \.label) { heading in
+                        Button {
+                            insertHeading(heading.label)
+                        } label: {
+                            Label(heading.label, systemImage: heading.symbol)
                                 .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(Color.mcTextPrimary)
-
-                            Text("Add anything that helps personalize your answers: medications you take, conditions you manage, allergies, or recent health concerns.")
-                                .font(.callout)
-                                .foregroundStyle(Color.mcTextSecondary)
-                                .lineSpacing(2)
-
-                            // Starter chips
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 8) {
-                                    ForEach(starterChips, id: \.label) { chip in
-                                        Button {
-                                            insertChip(chip.template)
-                                        } label: {
-                                            Label(chip.label, systemImage: iconForChip(chip.label))
-                                                .font(.caption.weight(.medium))
-                                                .foregroundStyle(Color.mcAccent)
-                                                .padding(.horizontal, 12)
-                                                .padding(.vertical, 8)
-                                                .background(Color.mcAccent.opacity(0.1))
-                                                .clipShape(Capsule())
-                                        }
-                                        .buttonStyle(.plain)
-                                    }
-                                }
-                            }
+                                .foregroundStyle(Color.mcBlueText)
+                                .padding(.horizontal, 12)
+                                .frame(minHeight: 40)
+                                .background(Color.mcBlueTint, in: Capsule())
+                                .contentShape(Capsule())
                         }
-                        .padding(14)
-                        .background(Color.mcBackgroundSecondary.opacity(0.5))
-                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .buttonStyle(.plain)
+                        .accessibilityHint("Adds this heading to your profile")
                     }
+                }
 
-                    // Text editor
-                    ZStack(alignment: .topLeading) {
-                        TextEditor(text: $v10ViewModel.editableDigest)
+                ZStack(alignment: .topLeading) {
+                    TextEditor(text: $v10ViewModel.editableDigest)
+                        .font(.body)
+                        .foregroundStyle(Color.mcInk)
+                        .scrollContentBackground(.hidden)
+                        .focused($editorFocused)
+                        .padding(10)
+                        .frame(minHeight: 280)
+                        .accessibilityIdentifier("v10.editor")
+                        .accessibilityLabel("Your health profile")
+
+                    if v10ViewModel.editableDigest.isEmpty {
+                        Text("For example:\nMedicines:\n- Metformin 500 mg with breakfast")
                             .font(.body)
-                            .foregroundStyle(Color.mcTextPrimary)
-                            .padding(8)
-                            .frame(minHeight: 200)
-                            .background(Color.mcInputBackground)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                            .accessibilityIdentifier("v10.editor")
-
-                        if v10ViewModel.editableDigest.isEmpty {
-                            Text("Type here or tap a category above to get started...")
-                                .font(.body)
-                                .foregroundStyle(Color.mcTextSecondary.opacity(0.6))
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 16)
-                                .allowsHitTesting(false)
-                        }
-                    }
-
-                    // Character count
-                    Text("\(v10ViewModel.editableDigest.count)/\(maxCharacters)")
-                        .font(.caption)
-                        .foregroundStyle(
-                            v10ViewModel.editableDigest.count > maxCharacters
-                                ? Color.mcEmergencyRed
-                                : Color.mcTextSecondary
-                        )
-                }
-                .padding(16)
-            }
-
-            // Save button pinned at bottom
-            VStack(spacing: 0) {
-                Divider()
-                Button {
-                    Task { await v10ViewModel.save() }
-                } label: {
-                    if v10ViewModel.isSaving {
-                        ProgressView().frame(maxWidth: .infinity)
-                    } else {
-                        Text("Save Profile").frame(maxWidth: .infinity)
+                            .foregroundStyle(Color.mcInk2)
+                            .padding(.horizontal, 15)
+                            .padding(.vertical, 18)
+                            .allowsHitTesting(false)
+                            .accessibilityHidden(true)
                     }
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(Color.mcAccent)
-                .controlSize(.large)
-                .disabled(v10ViewModel.isSaving || v10ViewModel.editableDigest.count > maxCharacters)
-                .accessibilityIdentifier("v10.save")
-                .padding(16)
+                .background(Color.mcSurface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .strokeBorder(editorFocused ? Color.mcBlueText : Color.mcLine, lineWidth: editorFocused ? 1.5 : 1)
+                )
+
+                Text("\(count) of \(maxCharacters) characters")
+                    .font(.footnote)
+                    .foregroundStyle(count > maxCharacters ? Color.mcRedText : Color.mcInk2)
+
+                if let error = v10ViewModel.errorMessage {
+                    Label(error, systemImage: "exclamationmark.triangle.fill")
+                        .font(.subheadline)
+                        .foregroundStyle(Color.mcInk)
+                        .padding(12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.mcAmberTint, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                }
             }
+            .padding(16)
         }
-        .overlay(alignment: .top) {
-            if let notice = v10ViewModel.noticeMessage {
-                ToastView(message: notice)
-                    .padding(.top, 8)
-                    .transition(.move(edge: .top).combined(with: .opacity))
-                    .zIndex(100)
-                    .onAppear {
-                        Task {
-                            try? await Task.sleep(for: .seconds(3))
-                            withAnimation { v10ViewModel.noticeMessage = nil }
-                        }
+        .scrollDismissesKeyboard(.interactively)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            Button {
+                Task {
+                    await v10ViewModel.save()
+                    if v10ViewModel.errorMessage == nil {
+                        dismiss()
                     }
+                }
+            } label: {
+                if v10ViewModel.isSaving {
+                    ProgressView()
+                        .tint(.white)
+                } else {
+                    Text("Save")
+                }
             }
-            if let error = v10ViewModel.errorMessage {
-                ToastView(message: error, icon: "exclamationmark.circle.fill", iconColor: .mcEmergencyRed)
-                    .padding(.top, 8)
-                    .transition(.move(edge: .top).combined(with: .opacity))
-                    .zIndex(100)
-                    .onAppear {
-                        Task {
-                            try? await Task.sleep(for: .seconds(4))
-                            withAnimation { v10ViewModel.errorMessage = nil }
-                        }
-                    }
-            }
+            .buttonStyle(PrimaryButtonStyle())
+            .disabled(v10ViewModel.isSaving || count > maxCharacters)
+            .accessibilityIdentifier("v10.save")
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(.bar)
         }
-        .background(Color.mcBackground)
-        .navigationTitle("Edit Health Profile")
+        .mcScreenBackground()
+        .navigationTitle("Edit my health")
+        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
+            ToolbarItem(placement: .cancellationAction) {
                 Button("Cancel") {
                     if hasUnsavedChanges {
-                        showDiscardConfirmation = true
+                        showsDiscardConfirmation = true
                     } else {
                         dismiss()
                     }
@@ -151,15 +130,16 @@ struct V10EditorView: View {
         }
         .onAppear {
             baselineDigest = v10ViewModel.editableDigest
+            v10ViewModel.errorMessage = nil
         }
-        .alert("Discard unsaved changes?", isPresented: $showDiscardConfirmation) {
-            Button("Keep Editing", role: .cancel) {}
+        .alert("Discard your changes?", isPresented: $showsDiscardConfirmation) {
+            Button("Keep editing", role: .cancel) {}
             Button("Discard", role: .destructive) {
                 v10ViewModel.editableDigest = baselineDigest
                 dismiss()
             }
         } message: {
-            Text("Your recent edits will be lost.")
+            Text("What you changed here will be lost.")
         }
     }
 
@@ -167,21 +147,14 @@ struct V10EditorView: View {
         v10ViewModel.editableDigest != baselineDigest
     }
 
-    private func insertChip(_ template: String) {
-        if v10ViewModel.editableDigest.isEmpty {
-            v10ViewModel.editableDigest = template
+    private func insertHeading(_ label: String) {
+        let heading = "\(label):\n- "
+        let text = v10ViewModel.editableDigest
+        if text.isEmpty {
+            v10ViewModel.editableDigest = heading
         } else {
-            v10ViewModel.editableDigest += "\n" + template
+            v10ViewModel.editableDigest = text + (text.hasSuffix("\n") ? "\n" : "\n\n") + heading
         }
-    }
-
-    private func iconForChip(_ label: String) -> String {
-        switch label {
-        case "Medication": return "pills"
-        case "Condition": return "stethoscope"
-        case "Allergy": return "exclamationmark.triangle"
-        case "Recent concern": return "clock"
-        default: return "plus"
-        }
+        editorFocused = true
     }
 }
