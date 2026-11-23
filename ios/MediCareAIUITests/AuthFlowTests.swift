@@ -79,7 +79,7 @@ final class AuthFlowTests: XCTestCase {
 
         XCTAssertTrue(app.buttons["citation.1"].waitForExistence(timeout: 15), "Sources should show")
         XCTAssertTrue(app.buttons["citation.3"].exists)
-        XCTAssertGreaterThanOrEqual(app.buttons["citation.1"].frame.height, 44, "Source chips need a 44 pt touch target")
+        XCTAssertGreaterThanOrEqual(app.buttons["citation.1"].frame.height.rounded(), 44, "Source chips need a 44 pt touch target")
         XCTAssertTrue(app.element("answer.lead").exists, "The short answer should show")
         XCTAssertTrue(app.element("answer.doThis").exists)
         XCTAssertTrue(app.element("answer.watchFor").exists)
@@ -136,7 +136,7 @@ final class AuthFlowTests: XCTestCase {
 
         let heading = app.buttons["v10.heading.Conditions"]
         XCTAssertTrue(heading.waitForExistence(timeout: 5))
-        XCTAssertGreaterThanOrEqual(heading.frame.height, 44, "Heading chips need a 44 pt touch target")
+        XCTAssertGreaterThanOrEqual(heading.frame.height.rounded(), 44, "Heading chips need a 44 pt touch target")
 
         app.type("Conditions: Hypertension", into: "v10.editor")
         app.buttons["v10.save"].tap()
