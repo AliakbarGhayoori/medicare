@@ -76,3 +76,46 @@ def test_sections_prompt_keeps_the_default_prompt_and_adds_the_layout() -> None:
     assert "one plain sentence" in prompt
     assert "small talk" in prompt
     assert _SIGNAL_FORMAT in prompt
+
+
+def _layout_block() -> str:
+    default = build_system_prompt("Takes metformin.")
+    prompt = build_system_prompt("Takes metformin.", answer_format="sections")
+    return " ".join(prompt[len(default) :].split())
+
+
+def test_sections_prompt_quotes_the_labels_instead_of_backticks() -> None:
+    layout = _layout_block()
+
+    assert 'a line that says exactly "Do this:"' in layout
+    assert 'a line that says exactly "Watch for:"' in layout
+    assert "`" not in layout
+
+
+def test_sections_prompt_keeps_questions_and_extras_out_of_the_boxes() -> None:
+    layout = _layout_block()
+
+    assert (
+        "Put any question for the person, or any offer to help further, in these paragraphs."
+        in layout
+    )
+    assert 'Use "Do this:" instead of a "What to do next" section.' in layout
+    assert "Write nothing else after the Watch for list." in layout
+
+
+def test_sections_prompt_ends_every_answer_with_the_safety_signal_line() -> None:
+    layout = _layout_block()
+
+    assert "5. Last, the SAFETY_SIGNAL line." in layout
+    assert "and still end with the SAFETY_SIGNAL line" in layout
+
+
+def test_sections_prompt_names_a_number_only_for_a_known_country() -> None:
+    layout = _layout_block()
+
+    assert (
+        "In an emergency the app shows a button that calls the person's local emergency number, "
+        'so name a number only when you know their country; otherwise write "your local '
+        'emergency number".'
+    ) in layout
+    assert "911" not in layout

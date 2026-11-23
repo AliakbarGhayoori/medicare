@@ -161,11 +161,18 @@ async def test_requests_without_answer_format_keep_the_old_layout(
     assert seen["answer_format"] is None
 
 
-async def test_unknown_answer_format_is_rejected(api_client, auth_headers):
+async def test_unknown_answer_format_falls_back_to_the_default_layout(
+    monkeypatch, api_client, auth_headers
+):
+    # A newer app may ask for a layout this server doesn't know yet; it still gets an answer.
+    seen: dict = {}
+    monkeypatch.setattr(chat_api, "generate_response_events", _recording_generator(seen))
+
     response = await api_client.post(
         "/api/chat/ask",
-        json={"question": "Is coffee okay?", "answerFormat": "html"},
+        json={"question": "Is coffee okay?", "answerFormat": "cards-v2"},
         headers=auth_headers,
     )
 
-    assert response.status_code == 422
+    assert response.status_code == 200
+    assert seen["answer_format"] is None

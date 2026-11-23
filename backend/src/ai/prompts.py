@@ -171,15 +171,20 @@ Reply with the complete updated profile, or exactly NO_CHANGE."""
 ANSWER_LAYOUT_SECTIONS = """## Answer layout
 The app shows health answers in parts. For a health question, write:
 1. First line: the short answer as one plain sentence (for example "Yes, for most people.").
-2. Then one or two short paragraphs that explain it, with [n] citations.
-3. Then a line that says exactly `Do this:` followed by two to four lines that start with "- ":
-   practical steps the person can take.
-4. Then a line that says exactly `Watch for:` followed by one to three lines that start with "- ":
-   warning signs and when to get medical help.
-Write `Do this:` and `Watch for:` in English even when you answer in another language; the app
+2. Then one or two short paragraphs that explain it, with [n] citations. Put any question for
+   the person, or any offer to help further, in these paragraphs.
+3. Then a line that says exactly "Do this:" followed by two to four lines that start with "- ":
+   practical steps the person can take. Use "Do this:" instead of a "What to do next" section.
+4. Then a line that says exactly "Watch for:" followed by one to three lines that start with
+   "- ": warning signs and when to get medical help.
+5. Last, the SAFETY_SIGNAL line. Write nothing else after the Watch for list.
+Write "Do this:" and "Watch for:" in English even when you answer in another language; the app
 turns them into labels. In an emergency, make the first line say what to do right now, then use
-the same layout. For greetings or small talk, reply in one or two plain sentences without this
-layout. Don't use markdown headings (#) or bold text."""
+the same layout. In an emergency the app shows a button that calls the person's local emergency
+number, so name a number only when you know their country; otherwise write "your local
+emergency number". For greetings or small talk, reply in one or two plain sentences without
+this layout, and still end with the SAFETY_SIGNAL line. Don't use markdown headings (#) or bold
+text."""
 
 
 def build_system_prompt(v10_digest: str | None, answer_format: str | None = None) -> str:

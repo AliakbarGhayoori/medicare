@@ -6,6 +6,11 @@ AI chat (OpenRouter + Tavily) → V10 health profile → conversation history.
 
 Usage:
     python scripts/live_e2e_check.py [--base-url http://127.0.0.1:8000]
+    python scripts/live_e2e_check.py --mock-uid livecheck --only sections
+
+`--mock-uid` talks to a backend running with AUTH_MODE=mock and creates no Firebase account.
+`--only sections` runs just the health check and the answer layout cases that the
+1.1 app relies on (answerFormat "sections"); run it before deploying a prompt change.
 """
 
 from __future__ import annotations
@@ -239,6 +244,86 @@ def test_history(token: str, conv_id: str | None) -> None:
             _log("FAIL", "GET /api/chat/history/{id}", f"HTTP {code}, {len(msgs)} messages")
 
 
+# ── 10. Answer layout for the 1.1 app ────────────────────────
+SECTIONS_CASES = [
+    ("emergency-en", "I have crushing chest pain going down my left arm and I'm sweating"),
+    ("emergency-da", "Jeg har pludselig stærke smerter i brystet, og det stråler ud i venstre arm"),
+    ("question", "Is it okay to drink coffee when I take metformin?"),
+    ("greeting", "Hello, thank you for your help yesterday!"),
+]
+
+
+def _ask_sections(auth: dict, question: str) -> tuple[int, dict | None, str]:
+    code, body = _request(
+        f"{BASE_URL}/api/chat/ask",
+        method="POST",
+        data={"question": question, "answerFormat": "sections"},
+        headers=auth,
+        timeout=180,
+    )
+    done = None
+    streamed: list[str] = []
+    for block in body.split("\n\n"):
+        fields = dict(line.split(": ", 1) for line in block.splitlines() if ": " in line)
+        try:
+            data = json.loads(fields.get("data", "{}"))
+        except json.JSONDecodeError:
+            continue
+        if fields.get("event") == "token":
+            streamed.append(data.get("text", ""))
+        elif fields.get("event") == "done":
+            done = data
+    return code, done, "".join(streamed)
+
+
+def _layout_problems(content: str) -> list[str]:
+    """What keeps the app from showing the "Do this" and "Watch for" boxes."""
+    lines = [line.strip() for line in content.splitlines() if line.strip()]
+    problems = [label for label in ("Do this:", "Watch for:") if label not in lines]
+    if "Watch for:" in lines:
+        after = lines[lines.index("Watch for:") + 1 :]
+        if not after:
+            problems.append("nothing under Watch for")
+        stray = [line for line in after if not line.startswith("- ")]
+        if stray:
+            problems.append(f"{len(stray)} line(s) after the Watch for list")
+    if "`" in content:
+        problems.append("backticks")
+    return problems
+
+
+def test_sections_layout(auth: dict) -> None:
+    for key, question in SECTIONS_CASES:
+        name = f"Sections layout ({key})"
+        code, done, streamed = _ask_sections(auth, question)
+        if done is None:
+            _log("FAIL", name, f"HTTP {code}, no done event")
+            continue
+        content = done.get("content", "")
+        emergency = done.get("requiresEmergencyCare")
+        numbers = [n for n in ("112", "911", "999", "000") if n in content]
+        problems = []
+        if "SAFETY_SIGNAL" in content or "SAFETY_SIGNAL" in streamed:
+            problems.append("SAFETY_SIGNAL visible")
+        if key.startswith("emergency"):
+            if emergency is not True:
+                problems.append("requiresEmergencyCare is not true")
+            problems += _layout_problems(content)
+        elif key == "question":
+            if emergency is not False:
+                problems.append("flagged as an emergency")
+            if not done.get("citations"):
+                problems.append("no citations")
+            problems += _layout_problems(content)
+        elif "Do this:" in content or "Watch for:" in content:
+            problems.append("a greeting used the layout")
+        detail = f"emergency={emergency}, numbers={numbers or 'none'}"
+        if problems:
+            _log("FAIL", name, f"{detail}; " + "; ".join(problems))
+        else:
+            _log("PASS", name, detail)
+
+
 # ── 9. V10 auto-update check ─────────────────────────────────
 def test_v10_auto_update(token: str) -> None:
     auth = {"Authorization": f"Bearer {token}"}
@@ -258,24 +343,35 @@ def main() -> None:
     global BASE_URL
     parser = argparse.ArgumentParser(description="MediCare AI Live E2E Check")
     parser.add_argument("--base-url", default=BASE_URL)
+    parser.add_argument("--mock-uid", help="use 'Bearer mock:<uid>' instead of Firebase")
+    parser.add_argument("--only", choices=["sections"], help="run only these checks")
     args = parser.parse_args()
     BASE_URL = args.base_url
 
     print(f"\n{'='*60}")
     print(f"  MediCare AI — Live E2E Verification")
     print(f"  Backend: {BASE_URL}")
-    print(f"  Test user: {TEST_EMAIL}")
+    print(f"  Test user: {f'mock:{args.mock_uid}' if args.mock_uid else TEST_EMAIL}")
     print(f"{'='*60}\n")
 
     # 1. Health
     test_health()
 
-    # 2-3. Firebase auth
-    token = test_firebase_signup()
-    if not token:
-        token = test_firebase_signin()
+    # 2-3. Firebase auth (skipped for a backend running with AUTH_MODE=mock)
+    if args.mock_uid:
+        token = f"mock:{args.mock_uid}"
     else:
-        test_firebase_signin()
+        token = test_firebase_signup()
+        if not token:
+            token = test_firebase_signin()
+        else:
+            test_firebase_signin()
+
+    if args.only == "sections":
+        if token:
+            test_sections_layout({"Authorization": f"Bearer {token}"})
+        _report()
+        return
 
     if not token:
         print("\n❌ Cannot proceed without Firebase token. Aborting.")
@@ -299,6 +395,13 @@ def main() -> None:
     # 9. V10 auto-update
     test_v10_auto_update(token)
 
+    # 10. Answer layout for the 1.1 app
+    test_sections_layout({"Authorization": f"Bearer {token}"})
+
+    _report()
+
+
+def _report() -> None:
     # ── Report ────────────────────────────────────────────
     print(f"\n{'='*60}")
     passed = sum(1 for r in results if r["status"] == "PASS")

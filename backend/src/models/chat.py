@@ -23,6 +23,12 @@ class ChatRequest(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True, str_strip_whitespace=True)
 
+    @field_validator("answer_format", mode="before")
+    @classmethod
+    def ignore_unknown_answer_format(cls, value: object) -> str | None:
+        # A newer app may ask for a layout this server doesn't know yet; it gets the default.
+        return "sections" if value == "sections" else None
+
     @field_validator("question")
     @classmethod
     def validate_question(cls, value: str) -> str:
