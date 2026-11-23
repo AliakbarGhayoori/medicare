@@ -10,6 +10,9 @@ final class SettingsViewModel: ObservableObject {
 
     private let apiService: APIServicing
     private let analytics: AnalyticsServicing
+    /// Goes up on every reset, so a request that was still running for the old account
+    /// can't bring its settings back.
+    private var generation = 0
 
     init(apiService: APIServicing, analytics: AnalyticsServicing) {
         self.apiService = apiService
@@ -18,16 +21,21 @@ final class SettingsViewModel: ObservableObject {
 
     /// Back to defaults after the account signs out.
     func reset() {
+        generation += 1
         settings = .default
         errorMessage = nil
+        isLoading = false
+        isSaving = false
     }
 
     func load() async {
+        let started = generation
         isLoading = true
-        defer { isLoading = false }
 
         do {
-            settings = try await apiService.fetchSettings()
+            let loaded = try await apiService.fetchSettings()
+            guard started == generation else { return }
+            settings = loaded
             analytics.track(
                 "settings_loaded",
                 properties: [
@@ -36,16 +44,20 @@ final class SettingsViewModel: ObservableObject {
                 ]
             )
         } catch {
+            guard started == generation else { return }
             errorMessage = ErrorHandling.message(for: error)
         }
+        isLoading = false
     }
 
     func update(fontSize: UserSettings.FontSize? = nil, highContrast: Bool? = nil) async {
+        let started = generation
         isSaving = true
-        defer { isSaving = false }
 
         do {
-            settings = try await apiService.updateSettings(fontSize: fontSize, highContrast: highContrast)
+            let updated = try await apiService.updateSettings(fontSize: fontSize, highContrast: highContrast)
+            guard started == generation else { return }
+            settings = updated
             var changed: [String] = []
             if fontSize != nil { changed.append("fontSize") }
             if highContrast != nil { changed.append("highContrast") }
@@ -54,18 +66,24 @@ final class SettingsViewModel: ObservableObject {
                 properties: ["fields": changed.joined(separator: ",")]
             )
         } catch {
+            guard started == generation else { return }
             errorMessage = ErrorHandling.message(for: error)
         }
+        isSaving = false
     }
 
     func acceptDisclaimerIfNeeded() async {
         guard settings.disclaimerAcceptedAt == nil else { return }
+        let started = generation
 
         do {
             _ = try await apiService.acceptDisclaimer(version: "1.0")
-            settings = try await apiService.fetchSettings()
+            let loaded = try await apiService.fetchSettings()
+            guard started == generation else { return }
+            settings = loaded
             analytics.track("onboarding_completed", properties: ["disclaimerVersion": "1.0"])
         } catch {
+            guard started == generation else { return }
             errorMessage = ErrorHandling.message(for: error)
         }
     }

@@ -31,9 +31,16 @@ enum EmergencyNumber {
         return Locale(identifier: "en_US").localizedString(forRegionCode: region.uppercased())
     }
 
+    /// Countries whose English name takes "the".
+    private static let namedWithThe: Set<String> = [
+        "US", "GB", "AE", "NL", "PH", "DO", "BS", "GM", "CF", "KM", "MV", "MH", "SB", "SC", "VA",
+        "VI", "VG", "KY", "FO", "FK", "MP", "TC", "CK", "AX", "CC", "UM", "IO", "PS", "TF",
+    ]
+
     /// The country as it reads after "in": "the United States", "Denmark".
     static func countryPhrase(forRegion region: String?) -> String? {
-        countryName(forRegion: region)
+        guard let region, let name = countryName(forRegion: region) else { return nil }
+        return namedWithThe.contains(region.uppercased()) ? "the \(name)" : name
     }
 
     static var currentRegion: String? {

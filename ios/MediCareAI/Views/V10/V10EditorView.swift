@@ -38,7 +38,7 @@ struct V10EditorView: View {
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(Color.mcBlueText)
                                 .padding(.horizontal, 12)
-                                .frame(minHeight: 40)
+                                .frame(minHeight: 44)
                                 .background(Color.mcBlueTint, in: Capsule())
                                 .contentShape(Capsule())
                         }

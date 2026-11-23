@@ -36,7 +36,7 @@ struct SignUpView: View {
                 }
 
                 FormField(label: "Email") {
-                    TextField("you@example.com", text: $email)
+                    TextField(AuthCopy.emailExample, text: $email)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .keyboardType(.emailAddress)

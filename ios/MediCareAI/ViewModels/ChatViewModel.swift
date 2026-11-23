@@ -40,10 +40,13 @@ final class ChatViewModel: ObservableObject {
         searchingTool = nil
         searchingQuery = nil
         profileUpdatedNotice = nil
+        accessibilityAnnouncement = nil
     }
 
     func loadConversation(conversationId: String) async {
         errorMessage = nil
+        isLoadingConversation = true
+        defer { isLoadingConversation = false }
         do {
             let response = try await apiService.fetchConversation(
                 conversationId: conversationId,
@@ -71,6 +74,7 @@ final class ChatViewModel: ObservableObject {
         searchingTool = nil
         searchingQuery = nil
         profileUpdatedNotice = nil
+        accessibilityAnnouncement = nil
     }
 
     func sendMessage(_ content: String) async {
@@ -79,7 +83,8 @@ final class ChatViewModel: ObservableObject {
 
     private func send(_ content: String, showsQuestion: Bool) async {
         let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, !isStreaming else { return }
+        // While a past chat opens, its messages would replace a new question on screen.
+        guard !trimmed.isEmpty, !isStreaming, !isLoadingConversation else { return }
 
         if showsQuestion {
             let userMessage = Message(
@@ -102,6 +107,7 @@ final class ChatViewModel: ObservableObject {
         errorMessage = nil
         lastFailedQuestion = nil
         interruptedAnswer = nil
+        accessibilityAnnouncement = nil
         await primeKnownV10VersionIfNeeded()
         analytics.track(
             "question_asked",
@@ -140,6 +146,9 @@ final class ChatViewModel: ObservableObject {
                         createdAt: .now
                     )
                     messages.append(assistant)
+                    if payload.requiresEmergencyCare {
+                        accessibilityAnnouncement = SpeechText.emergencyIntro(number: EmergencyNumber.current)
+                    }
                     streamingText = ""
                     isStreaming = false
                     isSearching = false

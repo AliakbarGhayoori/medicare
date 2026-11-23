@@ -117,3 +117,9 @@ enum UITesting {
     /// Password autofill prompts get in the way of UI tests.
     static let isActive = ProcessInfo.processInfo.arguments.contains("--uitesting")
 }
+
+enum AuthCopy {
+    /// Passed as a plain String: a string literal is read as markdown, and SwiftUI would draw
+    /// the address as a blue link in the empty field.
+    static let emailExample: String = "you@example.com"
+}

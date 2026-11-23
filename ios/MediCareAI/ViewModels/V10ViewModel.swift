@@ -13,6 +13,9 @@ final class V10ViewModel: ObservableObject {
 
     private let apiService: APIServicing
     private let analytics: AnalyticsServicing
+    /// Goes up on every reset, so a request that was still running for the old account
+    /// can't bring its profile back.
+    private var generation = 0
 
     init(apiService: APIServicing, analytics: AnalyticsServicing) {
         self.apiService = apiService
@@ -21,19 +24,24 @@ final class V10ViewModel: ObservableObject {
 
     /// Forgets the signed-out account's health profile.
     func reset() {
+        generation += 1
         digest = nil
         editableDigest = ""
         errorMessage = nil
         noticeMessage = nil
         isLoading = false
+        isSaving = false
+        isReverting = false
     }
 
     func load() async {
+        let started = generation
         isLoading = true
         errorMessage = nil
 
         do {
             let response = try await apiService.fetchV10()
+            guard started == generation else { return }
             digest = response
             editableDigest = response.digest ?? ""
             analytics.track(
@@ -41,6 +49,7 @@ final class V10ViewModel: ObservableObject {
                 properties: ["hasDigest": response.digest == nil ? "false" : "true"]
             )
         } catch {
+            guard started == generation else { return }
             errorMessage = ErrorHandling.message(for: error)
         }
 
@@ -54,12 +63,14 @@ final class V10ViewModel: ObservableObject {
             return
         }
 
+        let started = generation
         isSaving = true
         errorMessage = nil
         noticeMessage = nil
 
         do {
             let updated = try await apiService.updateV10(digest: trimmed)
+            guard started == generation else { return }
             digest = updated
             editableDigest = updated.digest ?? ""
             noticeMessage = "Your health profile is saved."
@@ -68,6 +79,7 @@ final class V10ViewModel: ObservableObject {
                 properties: ["source": "manual", "version": String(updated.version)]
             )
         } catch {
+            guard started == generation else { return }
             errorMessage = ErrorHandling.message(for: error)
         }
 
@@ -77,13 +89,14 @@ final class V10ViewModel: ObservableObject {
     func revertToPrevious() async {
         guard digest?.canRevert == true else { return }
 
+        let started = generation
         isReverting = true
         errorMessage = nil
         noticeMessage = nil
-        defer { isReverting = false }
 
         do {
             let updated = try await apiService.revertV10()
+            guard started == generation else { return }
             digest = updated
             editableDigest = updated.digest ?? ""
             noticeMessage = "Your profile is back to how it was."
@@ -92,7 +105,9 @@ final class V10ViewModel: ObservableObject {
                 properties: ["source": "revert", "version": String(updated.version)]
             )
         } catch {
+            guard started == generation else { return }
             errorMessage = ErrorHandling.message(for: error)
         }
+        isReverting = false
     }
 }

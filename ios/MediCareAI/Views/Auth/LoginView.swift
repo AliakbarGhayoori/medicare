@@ -26,7 +26,7 @@ struct LoginView: View {
                     .padding(.bottom, 8)
 
                     FormField(label: "Email") {
-                        TextField("you@example.com", text: $email)
+                        TextField(AuthCopy.emailExample, text: $email)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
                             .keyboardType(.emailAddress)

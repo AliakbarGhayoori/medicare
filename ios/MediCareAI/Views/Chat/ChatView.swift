@@ -56,6 +56,7 @@ struct ChatView: View {
                                 UserBubble(text: message.content)
                             case .assistant:
                                 AnswerView(message: message) { viewModel.didTapCitation($0) }
+                                    .equatable()
                             }
                         }
                         .id(message.id)
@@ -128,6 +129,11 @@ struct ChatView: View {
                 draft = text
             }
         }
+        .onChange(of: viewModel.accessibilityAnnouncement) { _, text in
+            if let text {
+                AccessibilityNotification.Announcement(text).post()
+            }
+        }
         .onDisappear {
             readAloud.stop()
             speech.stop()
@@ -161,11 +167,14 @@ struct ChatView: View {
             Composer(
                 text: $draft,
                 placeholder: viewModel.messages.isEmpty ? topic.placeholder : "Ask a follow-up",
-                isBusy: viewModel.isStreaming,
+                isBusy: viewModel.isStreaming || viewModel.isLoadingConversation,
                 isListening: speech.isListening,
                 focus: $composerFocused,
                 onSend: send,
-                onMic: { Task { await speech.toggle() } }
+                onMic: {
+                    readAloud.stop()
+                    Task { await speech.toggle() }
+                }
             )
         }
         .padding(.horizontal, 12)
@@ -177,13 +186,14 @@ struct ChatView: View {
     private var listenButton: some View {
         if let answer = latestAnswer {
             Button {
-                readAloud.toggle(answer.content)
+                speech.stop()
+                readAloud.toggle(SpeechText.forMessage(answer, emergencyNumber: EmergencyNumber.current))
             } label: {
-                Label(
-                    readAloud.isSpeaking ? "Stop" : "Listen",
-                    systemImage: readAloud.isSpeaking ? "stop.fill" : "speaker.wave.2.fill"
-                )
-                .labelStyle(.titleAndIcon)
+                // A plain HStack: iOS 26 toolbars show only the icon of a Label.
+                HStack(spacing: 6) {
+                    Image(systemName: readAloud.isSpeaking ? "stop.fill" : "speaker.wave.2.fill")
+                    Text(readAloud.isSpeaking ? "Stop" : "Listen")
+                }
             }
             .disabled(viewModel.isStreaming)
             .accessibilityLabel(readAloud.isSpeaking ? "Stop reading aloud" : "Listen to the answer")
@@ -217,13 +227,20 @@ struct ChatView: View {
     }
 
     private var isWelcomeVisible: Bool {
-        conversation == nil && viewModel.messages.isEmpty && !viewModel.isStreaming
-            && viewModel.interruptedAnswer == nil && viewModel.errorMessage == nil
+        Self.showsWelcome(
+            conversation: conversation,
+            starter: starter,
+            isEmpty: viewModel.messages.isEmpty && !viewModel.isStreaming
+                && viewModel.interruptedAnswer == nil && viewModel.errorMessage == nil
+        )
     }
 
-    /// The topic welcome with example questions shows only for an empty new chat.
+    /// The topic welcome with example questions shows only for an empty new chat. A question
+    /// asked on Home is on its way, so its chat opens without the welcome.
     nonisolated static func showsWelcome(conversation: Conversation?, starter: ChatStarter?, isEmpty: Bool) -> Bool {
-        conversation == nil && isEmpty
+        guard conversation == nil, isEmpty else { return false }
+        if case .question = starter { return false }
+        return true
     }
 
     private var isOpeningConversation: Bool {
@@ -252,7 +269,7 @@ struct ChatView: View {
 
     private func send() {
         let question = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !question.isEmpty, !viewModel.isStreaming else { return }
+        guard !question.isEmpty, !viewModel.isStreaming, !viewModel.isLoadingConversation else { return }
         speech.stop()
         readAloud.stop()
         draft = ""

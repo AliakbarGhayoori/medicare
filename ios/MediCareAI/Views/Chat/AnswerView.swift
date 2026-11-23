@@ -11,7 +11,7 @@ struct AnswerView: View {
             if message.requiresEmergencyCare {
                 EmergencyCard(
                     number: EmergencyNumber.current,
-                    countryName: EmergencyNumber.countryName(forRegion: EmergencyNumber.currentRegion)
+                    countryName: EmergencyNumber.countryPhrase(forRegion: EmergencyNumber.currentRegion)
                 )
                 AnswerBody(layout: AnswerLayout.parse(message.content), onCite: openCitation)
                 if !message.citations.isEmpty {
@@ -33,9 +33,11 @@ struct AnswerView: View {
     }
 }
 
+/// A finished answer only changes with its message, so streaming a new answer doesn't
+/// redraw (and re-parse) the earlier ones.
 extension AnswerView: Equatable {
     nonisolated static func == (lhs: AnswerView, rhs: AnswerView) -> Bool {
-        false
+        lhs.message == rhs.message
     }
 }
 
@@ -89,6 +91,9 @@ struct AnswerBody: View {
             if !layout.watchFor.isEmpty {
                 CalloutBox(kind: .watchFor, items: layout.watchFor, onCite: onCite)
                     .accessibilityIdentifier("answer.watchFor")
+            }
+            ForEach(Array(layout.closing.enumerated()), id: \.offset) { _, paragraph in
+                AnswerText(text: paragraph, onCite: onCite)
             }
         }
     }

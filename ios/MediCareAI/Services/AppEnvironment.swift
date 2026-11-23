@@ -26,8 +26,10 @@ struct AppEnvironment {
     }()
 }
 
-/// Switches that only UI tests set. They do nothing unless the app runs with the mock
-/// sign-in and the mock API, so the App Store build can never use them.
+/// Switches that only UI tests set. The ones here do nothing unless the app runs with the
+/// mock sign-in and the mock API. `UITEST_ONBOARDING_COMPLETED` and `UITEST_CLEAR_KEYCHAIN`
+/// (read in `AppContext`) also work with the real sign-in, because the live tests need them;
+/// an App Store build never receives environment variables, so none of them can reach it.
 enum UITestHooks {
     private static var environment: [String: String] { ProcessInfo.processInfo.environment }
 

@@ -13,12 +13,9 @@ extension UserSettings.FontSize {
 struct MinimumTextSize: ViewModifier {
     let minimum: DynamicTypeSize?
 
-    @ViewBuilder
     func body(content: Content) -> some View {
-        if let minimum {
-            content.dynamicTypeSize(minimum...)
-        } else {
-            content
-        }
+        // Always the same modifier, so changing the setting keeps the open tab, screens and
+        // typed text; `.xSmall...` allows every size.
+        content.dynamicTypeSize((minimum ?? .xSmall)...)
     }
 }

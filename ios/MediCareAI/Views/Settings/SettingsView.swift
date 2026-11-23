@@ -172,7 +172,7 @@ struct SettingsView: View {
 
     private var emergencyFooter: String {
         let base = "MediCare AI is not an emergency service. In an emergency, call this number."
-        guard let country = EmergencyNumber.countryName(forRegion: EmergencyNumber.currentRegion) else {
+        guard let country = EmergencyNumber.countryPhrase(forRegion: EmergencyNumber.currentRegion) else {
             return base
         }
         return "The emergency number in \(country). " + base

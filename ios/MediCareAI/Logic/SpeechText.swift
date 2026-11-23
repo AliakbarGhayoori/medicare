@@ -15,17 +15,21 @@ enum SpeechText {
             parts.append("Watch for.")
             parts.append(contentsOf: layout.watchFor)
         }
+        parts.append(contentsOf: layout.closing)
         return parts.map(clean).filter { !$0.isEmpty }.map(endSentence).joined(separator: " ")
     }
 
     /// What the red emergency card says, for Listen and VoiceOver.
     static func emergencyIntro(number: String) -> String {
-        ""
+        "This could be an emergency. Call \(number) now. Don't wait to see if it gets better."
     }
 
-    /// The text Listen reads for an answer.
+    /// The text Listen reads for an answer: the emergency card first, when there is one.
     static func forMessage(_ message: Message, emergencyNumber: String) -> String {
-        plain(from: message.content)
+        let answer = plain(from: message.content)
+        guard message.requiresEmergencyCare else { return answer }
+        let intro = emergencyIntro(number: emergencyNumber)
+        return answer.isEmpty ? intro : intro + " " + answer
     }
 
     static func clean(_ text: String) -> String {

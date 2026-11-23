@@ -23,6 +23,12 @@ struct DataPrivacyView: View {
                     detail: "Sent to Tavily to find trusted sources such as the NHS and Mayo Clinic."
                 )
                 FeatureRow(
+                    symbol: "mic.fill",
+                    tint: .tileOrange,
+                    title: "Your voice, if you talk",
+                    detail: "Turned into text by Apple's speech recognition, on your iPhone when it can."
+                )
+                FeatureRow(
                     symbol: "hand.raised.fill",
                     tint: .tileSlate,
                     title: "Nothing else",

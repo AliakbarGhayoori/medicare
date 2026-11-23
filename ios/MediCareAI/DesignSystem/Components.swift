@@ -2,7 +2,8 @@ import SwiftUI
 
 // MARK: - Buttons
 
-/// The main action: white text on a blue (or red, for emergencies) capsule.
+/// The main action: white text on a blue (or red, for emergencies) capsule. Grey while it
+/// can't be used yet, in light and dark mode alike.
 struct PrimaryButtonStyle: ButtonStyle {
     var fill: Color = .mcBlue
     @Environment(\.isEnabled) private var isEnabled
@@ -10,12 +11,12 @@ struct PrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.headline)
-            .foregroundStyle(.white)
+            .foregroundStyle(isEnabled ? Color.white : Color.mcInk2)
             .multilineTextAlignment(.center)
             .padding(.horizontal, 20)
             .padding(.vertical, 14)
             .frame(maxWidth: .infinity, minHeight: 54)
-            .background(fill.opacity(isEnabled ? (configuration.isPressed ? 0.85 : 1) : 0.4), in: Capsule())
+            .background(isEnabled ? fill.opacity(configuration.isPressed ? 0.85 : 1) : Color.mcLine, in: Capsule())
             .contentShape(Capsule())
     }
 }
@@ -129,7 +130,7 @@ struct SourceChip: View {
             }
             .padding(.leading, 6)
             .padding(.trailing, 12)
-            .frame(minHeight: 40)
+            .frame(minHeight: 44)
             .background(Color.mcBlueTint, in: Capsule())
             .contentShape(Capsule())
         }
@@ -169,15 +170,36 @@ struct AnswerText: View {
 
     static let citeScheme = "medicare-cite"
 
+    /// Parses the whole text as markdown in one go, with each source number turned into a
+    /// link, so bold or italic text that runs across a source number still works.
     static func attributed(_ text: String) -> AttributedString {
-        var result = AttributedString()
+        let segments = CitationText.segments(text)
+        let markdown = segments.map { segment -> String in
+            switch segment {
+            case .text(let value): return value
+            case .cite(let number): return "\u{2009}[\(circled(number))](\(citeScheme)://\(number))"
+            }
+        }.joined()
         let options = AttributedString.MarkdownParsingOptions(
             interpretedSyntax: .inlineOnlyPreservingWhitespace
         )
-        for segment in CitationText.segments(text) {
+        guard var result = try? AttributedString(markdown: markdown, options: options) else {
+            return plainAttributed(segments)
+        }
+        let cites = result.runs.filter { $0.link?.scheme == citeScheme }.map(\.range)
+        for range in cites {
+            result[range].foregroundColor = .mcBlueText
+        }
+        return result
+    }
+
+    /// The text as written, with linked source numbers, for text the markdown parser rejects.
+    private static func plainAttributed(_ segments: [CitationText.Segment]) -> AttributedString {
+        var result = AttributedString()
+        for segment in segments {
             switch segment {
             case .text(let value):
-                result += (try? AttributedString(markdown: value, options: options)) ?? AttributedString(value)
+                result += AttributedString(value)
             case .cite(let number):
                 var cite = AttributedString("\u{2009}" + circled(number))
                 cite.link = URL(string: "\(citeScheme)://\(number)")

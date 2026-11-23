@@ -18,7 +18,7 @@ struct TranscriptGate {
     }
 
     func accepts(_ id: Int) -> Bool {
-        true
+        isOpen && id == session
     }
 }
 
@@ -33,6 +33,7 @@ final class SpeechInput: ObservableObject {
     private let audioEngine = AVAudioEngine()
     private var request: SFSpeechAudioBufferRecognitionRequest?
     private var task: SFSpeechRecognitionTask?
+    private var gate = TranscriptGate()
 
     func toggle() async {
         if isListening {
@@ -75,11 +76,14 @@ final class SpeechInput: ObservableObject {
 
             transcript = ""
             isListening = true
+            let listening = gate.open()
             task = recognizer.recognitionTask(with: request) { [weak self] result, error in
                 let text = result?.bestTranscription.formattedString
                 let finished = error != nil || result?.isFinal == true
                 Task { @MainActor in
-                    guard let self else { return }
+                    // A result that arrives after stop (for example after the question was
+                    // sent) must not refill the question field or stop a newer session.
+                    guard let self, self.gate.accepts(listening) else { return }
                     if let text { self.transcript = text }
                     if finished { self.stop() }
                 }
@@ -91,6 +95,7 @@ final class SpeechInput: ObservableObject {
     }
 
     func stop() {
+        gate.close()
         guard isListening || task != nil || request != nil else { return }
         if audioEngine.isRunning {
             audioEngine.stop()
