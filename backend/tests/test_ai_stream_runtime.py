@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import json
+import logging
 from types import SimpleNamespace
 
 import pytest
 
 from src.ai import stream as stream_runtime
+from src.ai.sources import SourceRegistry
 from src.exceptions import APIError
+
+# --- Fakes mirroring OpenAI/OpenRouter streaming chunks -----------------------
 
 
 class _FakeAPIError(Exception):
@@ -16,91 +20,92 @@ class _FakeAPIError(Exception):
         self.response = SimpleNamespace(status_code=status_code, headers=headers or {})
 
 
-def _tool_use_response(query: str, tool_use_id: str = "call_1") -> SimpleNamespace:
-    """Fake an OpenAI chat completion with a tool call."""
-    tool_call = SimpleNamespace(
-        id=tool_use_id,
-        type="function",
-        function=SimpleNamespace(
-            name="tavily_search",
-            arguments=json.dumps({"query": query}),
-        ),
+def _chunk(*, content=None, tool_calls=None, reasoning=None, finish_reason=None, model=None):  # noqa: ANN001, ANN202
+    delta = SimpleNamespace(
+        content=content,
+        tool_calls=tool_calls,
+        model_extra={"reasoning_details": reasoning} if reasoning else {},
     )
-    message = SimpleNamespace(
-        role="assistant",
-        content=None,
-        tool_calls=[tool_call],
-    )
-    message.model_dump = lambda: {
-        "role": "assistant",
-        "content": None,
-        "tool_calls": [
-            {
-                "id": tool_use_id,
-                "type": "function",
-                "function": {
-                    "name": "tavily_search",
-                    "arguments": json.dumps({"query": query}),
-                },
-            }
-        ],
-    }
-    choice = SimpleNamespace(message=message, finish_reason="tool_calls", index=0)
-    return SimpleNamespace(choices=[choice])
+    chunk = SimpleNamespace(choices=[SimpleNamespace(delta=delta, finish_reason=finish_reason)])
+    if model:
+        chunk.model = model
+    return chunk
 
 
-def _text_response(text: str) -> SimpleNamespace:
-    """Fake an OpenAI chat completion with a text response."""
-    message = SimpleNamespace(
-        role="assistant",
-        content=text,
-        tool_calls=None,
+def _tool_delta(index: int, *, call_id=None, name=None, arguments=None):  # noqa: ANN001, ANN202
+    return SimpleNamespace(
+        index=index,
+        id=call_id,
+        type="function" if call_id else None,
+        function=SimpleNamespace(name=name, arguments=arguments),
     )
-    message.model_dump = lambda: {
-        "role": "assistant",
-        "content": text,
-        "tool_calls": None,
-    }
-    choice = SimpleNamespace(message=message, finish_reason="stop", index=0)
-    return SimpleNamespace(choices=[choice])
+
+
+def text_round(*pieces: str) -> list:
+    return [_chunk(content=piece) for piece in pieces] + [_chunk(finish_reason="stop")]
+
+
+def tool_round(queries: list[str], *, reasoning=None, preamble=None) -> list:  # noqa: ANN001
+    chunks = [_chunk(content=preamble)] if preamble else []
+    for index, query in enumerate(queries):
+        arguments = json.dumps({"query": query})
+        half = len(arguments) // 2
+        chunks.append(
+            _chunk(
+                tool_calls=[
+                    _tool_delta(
+                        index,
+                        call_id=f"call_{index}",
+                        name="tavily_search",
+                        arguments=arguments[:half],
+                    )
+                ]
+            )
+        )
+        chunks.append(_chunk(tool_calls=[_tool_delta(index, arguments=arguments[half:])]))
+    for item in reasoning or []:
+        chunks.append(_chunk(reasoning=[item]))
+    chunks.append(_chunk(finish_reason="tool_calls"))
+    return chunks
+
+
+class _FakeStream:
+    def __init__(self, chunks: list) -> None:
+        self._chunks = chunks
+
+    def __aiter__(self):  # noqa: ANN204
+        return self._iterate()
+
+    async def _iterate(self):  # noqa: ANN202
+        for chunk in self._chunks:
+            yield chunk
 
 
 class _FakeCompletions:
-    def __init__(self, create_responses: list[object]) -> None:
-        self._create_responses = list(create_responses)
-        self.create_calls = 0
-        self.create_requests: list[dict] = []
+    def __init__(self, rounds: list) -> None:
+        self._rounds = list(rounds)
+        self.requests: list[dict] = []
 
-    async def create(self, **kwargs):  # noqa: ANN003
-        self.create_calls += 1
-        self.create_requests.append(kwargs)
-        if not self._create_responses:
-            return _text_response("")
-        next_response = self._create_responses.pop(0)
-        if isinstance(next_response, Exception):
-            raise next_response
-        return next_response
-
-
-class _FakeChat:
-    def __init__(self, completions: _FakeCompletions) -> None:
-        self.completions = completions
-
-
-class _FakeClient:
-    def __init__(self, completions: _FakeCompletions) -> None:
-        self.chat = _FakeChat(completions)
+    async def create(self, **kwargs):  # noqa: ANN003, ANN204
+        assert kwargs.get("stream") is True
+        self.requests.append({**kwargs, "messages": [dict(m) for m in kwargs["messages"]]})
+        next_round = self._rounds.pop(0) if self._rounds else text_round()
+        if isinstance(next_round, Exception):
+            raise next_round
+        return _FakeStream(next_round)
 
 
 @pytest.fixture
-def ai_settings():
+def ai_settings():  # noqa: ANN201
     return SimpleNamespace(
         mock_ai=False,
         ai_provider="openrouter",
         openrouter_api_key="test-key",
         anthropic_api_key="",
-        anthropic_model="test-model",
-        anthropic_max_tokens=256,
+        ai_model="test-model",
+        ai_fallback_models=[],
+        ai_reasoning_effort=None,
+        ai_max_tokens=256,
         ai_temperature=0.1,
         max_conversation_context_messages=10,
         sse_chunk_size=20,
@@ -110,174 +115,336 @@ def ai_settings():
     )
 
 
-async def _collect_events() -> list[dict]:
-    events: list[dict] = []
-    async for event in stream_runtime.generate_response_events(
-        question="How should I manage dizziness?",
-        conversation_history=[],
-        v10_digest=None,
-    ):
-        events.append(event)
-    return events
+@pytest.fixture
+def searches(monkeypatch):  # noqa: ANN001, ANN201
+    queries: list[str] = []
 
-
-async def test_model_can_make_tool_calls_and_then_return_text(monkeypatch, ai_settings):
-    fake_completions = _FakeCompletions(
-        create_responses=[
-            _tool_use_response("dizziness older adults causes red flags"),
-            _text_response(
-                "Final answer with evidence [1].\n\nSources:\n[1] Example (https://a.org)\n"
-            ),
-        ]
-    )
-    fake_client = _FakeClient(fake_completions)
-    tool_queries: list[str] = []
-
-    async def _fake_tavily_search(**kwargs):  # noqa: ANN003
-        tool_queries.append(kwargs["query"])
+    async def _fake_search(**kwargs):  # noqa: ANN003, ANN202
+        query = kwargs["query"]
+        queries.append(query)
         return {
-            "query": kwargs["query"],
+            "query": query,
             "answer": "",
             "results": [
                 {
-                    "title": "Mayo Clinic",
-                    "url": "https://www.mayoclinic.org/example",
-                    "source": "mayoclinic.org",
-                    "content": "Example snippet",
-                    "favicon": "",
-                    "score": 0.9,
+                    "title": f"About {query}",
+                    "url": f"https://source.example/{query.replace(' ', '-')}",
+                    "source": "source.example",
+                    "content": f"Evidence about {query}",
                 }
             ],
         }
 
+    monkeypatch.setattr(stream_runtime, "execute_tavily_search", _fake_search)
+    return queries
+
+
+def _install(monkeypatch, ai_settings, rounds: list) -> _FakeCompletions:  # noqa: ANN001
+    completions = _FakeCompletions(rounds)
+    client = SimpleNamespace(chat=SimpleNamespace(completions=completions))
     monkeypatch.setattr(stream_runtime, "get_settings", lambda: ai_settings)
-    monkeypatch.setattr(stream_runtime, "get_openai_client", lambda: fake_client)
-    monkeypatch.setattr(stream_runtime, "execute_tavily_search", _fake_tavily_search)
-
-    events = await _collect_events()
-    token_text = "".join(event.get("text", "") for event in events if event.get("type") == "token")
-
-    assert any(event.get("type") == "tool_use" for event in events)
-    assert tool_queries == ["dizziness older adults causes red flags"]
-    assert "Final answer with evidence" in token_text
-    assert fake_completions.create_calls == 2
-
-    second_request = fake_completions.create_requests[1]
-    tool_msg = second_request["messages"][-1]
-    assert tool_msg["role"] == "tool"
+    monkeypatch.setattr(stream_runtime, "get_openai_client", lambda: client)
+    return completions
 
 
-async def test_model_responds_without_tool_calls(monkeypatch, ai_settings):
-    """Model can respond directly without searching (e.g. greetings)."""
-    fake_completions = _FakeCompletions(
-        create_responses=[
-            _text_response("Hello! How can I help you today?"),
-        ]
+async def _run(
+    question: str = "How should I manage dizziness?",
+) -> tuple[list[dict], SourceRegistry]:
+    sources = SourceRegistry()
+    events = [
+        event
+        async for event in stream_runtime.generate_response_events(
+            question=question, conversation_history=[], v10_digest=None, sources=sources
+        )
+    ]
+    return events, sources
+
+
+def _tokens(events: list[dict]) -> list[str]:
+    return [event["text"] for event in events if event["type"] == "token"]
+
+
+def _tool_payloads(request: dict) -> list[dict]:
+    return [json.loads(m["content"]) for m in request["messages"] if m["role"] == "tool"]
+
+
+async def _no_sleep(_: float) -> None:
+    return None
+
+
+# --- Research policy -----------------------------------------------------------
+
+
+async def test_health_question_forces_search_on_first_round(monkeypatch, ai_settings, searches):
+    completions = _install(
+        monkeypatch, ai_settings, [tool_round(["dizziness causes"]), text_round("Answer [1].")]
     )
-    fake_client = _FakeClient(fake_completions)
 
-    monkeypatch.setattr(stream_runtime, "get_settings", lambda: ai_settings)
-    monkeypatch.setattr(stream_runtime, "get_openai_client", lambda: fake_client)
+    events, _ = await _run()
 
-    events = await _collect_events()
-    token_text = "".join(event.get("text", "") for event in events if event.get("type") == "token")
-
-    assert "Hello" in token_text
+    assert completions.requests[0]["tool_choice"] == "required"
+    assert "".join(_tokens(events)) == "Answer [1]."
 
 
-async def test_create_retries_on_retryable_server_errors(monkeypatch, ai_settings):
-    fake_completions = _FakeCompletions(
-        create_responses=[
-            _FakeAPIError(status_code=503),
-            _text_response("Recovered response."),
-        ]
+async def test_small_talk_does_not_force_search(monkeypatch, ai_settings, searches):
+    completions = _install(monkeypatch, ai_settings, [text_round("You're welcome!")])
+
+    await _run(question="thanks!")
+
+    assert completions.requests[0]["tool_choice"] == "auto"
+    assert searches == []
+
+
+async def test_min_calls_forces_another_research_round(monkeypatch, ai_settings, searches):
+    ai_settings.ai_tool_min_calls = 2
+    completions = _install(
+        monkeypatch,
+        ai_settings,
+        [tool_round(["a"]), tool_round(["b"]), text_round("Done [1][2].")],
     )
-    fake_client = _FakeClient(fake_completions)
 
-    async def _no_sleep(_: float) -> None:
-        return None
+    await _run()
 
-    monkeypatch.setattr(stream_runtime, "get_settings", lambda: ai_settings)
-    monkeypatch.setattr(stream_runtime, "get_openai_client", lambda: fake_client)
+    assert [r.get("tool_choice") for r in completions.requests] == ["required", "required", "auto"]
+
+
+# --- Streaming and pass-back ---------------------------------------------------
+
+
+async def test_answer_tokens_stream_in_model_order(monkeypatch, ai_settings, searches):
+    _install(monkeypatch, ai_settings, [tool_round(["q"]), text_round("Hel", "lo [1]")])
+
+    events, _ = await _run()
+
+    assert _tokens(events) == ["Hel", "lo [1]"]
+
+
+async def test_search_events_announce_each_query(monkeypatch, ai_settings, searches):
+    _install(monkeypatch, ai_settings, [tool_round(["a", "b"]), text_round("Done.")])
+
+    events, _ = await _run()
+
+    tool_events = [(e["status"], e["query"]) for e in events if e["type"] == "tool_use"]
+    assert tool_events == [("planning", None), ("searching", "a"), ("searching", "b")]
+
+
+async def test_reasoning_details_and_tool_calls_are_passed_back(monkeypatch, ai_settings, searches):
+    signature = {
+        "type": "reasoning.encrypted",
+        "data": "sig",
+        "format": "google-gemini-v1",
+        "id": "call_0",
+        "index": 0,
+    }
+    completions = _install(
+        monkeypatch,
+        ai_settings,
+        [tool_round(["dizziness causes"], reasoning=[signature]), text_round("Answer [1].")],
+    )
+
+    await _run()
+
+    assistant = next(m for m in completions.requests[1]["messages"] if m["role"] == "assistant")
+    assert assistant["reasoning_details"] == [signature]
+    assert assistant["tool_calls"][0]["id"] == "call_0"
+    assert assistant["tool_calls"][0]["function"] == {
+        "name": "tavily_search",
+        "arguments": json.dumps({"query": "dizziness causes"}),
+    }
+
+
+async def test_split_reasoning_items_are_merged(monkeypatch, ai_settings, searches):
+    pieces = [
+        {"type": "reasoning.text", "text": "Thinking ", "index": 0},
+        {"type": "reasoning.text", "text": "it over", "index": 0},
+    ]
+    completions = _install(
+        monkeypatch, ai_settings, [tool_round(["q"], reasoning=pieces), text_round("Done.")]
+    )
+
+    await _run()
+
+    assistant = next(m for m in completions.requests[1]["messages"] if m["role"] == "assistant")
+    assert assistant["reasoning_details"] == [
+        {"type": "reasoning.text", "text": "Thinking it over", "index": 0}
+    ]
+
+
+async def test_preamble_and_answer_both_stream(monkeypatch, ai_settings, searches):
+    completions = _install(
+        monkeypatch,
+        ai_settings,
+        [tool_round(["a"], preamble="Let me check. "), text_round("Answer [1].")],
+    )
+
+    events, _ = await _run()
+
+    assert "".join(_tokens(events)) == "Let me check. Answer [1]."
+    assistant = next(m for m in completions.requests[1]["messages"] if m["role"] == "assistant")
+    assert assistant["content"] == "Let me check. "
+
+
+async def test_fallback_routing_is_sent_with_every_round(monkeypatch, ai_settings, searches):
+    ai_settings.ai_fallback_models = ["openai/gpt-5.4"]
+    completions = _install(monkeypatch, ai_settings, [tool_round(["a"]), text_round("Done.")])
+
+    await _run()
+
+    for request in completions.requests:
+        assert request["model"] == "test-model"
+        assert request["extra_body"] == {"models": ["test-model", "openai/gpt-5.4"]}
+
+
+# --- Search results and budgets ------------------------------------------------
+
+
+async def test_tool_results_use_registry_numbers(monkeypatch, ai_settings, searches):
+    completions = _install(monkeypatch, ai_settings, [tool_round(["a", "b"]), text_round("Done.")])
+
+    _, sources = await _run()
+
+    payloads = _tool_payloads(completions.requests[1])
+    assert [payload["ok"] for payload in payloads] == [True, True]
+    assert [result["n"] for payload in payloads for result in payload["results"]] == [1, 2]
+    assert len(sources) == 2
+
+
+async def test_spent_budget_forces_final_round_without_tools(monkeypatch, ai_settings, searches):
+    ai_settings.ai_tool_max_calls = 2
+    completions = _install(
+        monkeypatch, ai_settings, [tool_round(["a", "b", "c"]), text_round("Done.")]
+    )
+
+    await _run()
+
+    assert searches == ["a", "b"]
+    assert _tool_payloads(completions.requests[1])[2]["error"]["code"] == "SEARCH_BUDGET_EXHAUSTED"
+    assert "tools" not in completions.requests[1]
+    assert "tool_choice" not in completions.requests[1]
+
+
+async def test_last_round_omits_tools(monkeypatch, ai_settings, searches):
+    ai_settings.ai_tool_max_rounds = 2
+    completions = _install(monkeypatch, ai_settings, [tool_round(["a"]), text_round("Done.")])
+
+    await _run()
+
+    assert "tools" in completions.requests[0]
+    assert "tools" not in completions.requests[1]
+
+
+async def test_one_failed_search_does_not_block_answer(monkeypatch, ai_settings):
+    async def _search(**kwargs):  # noqa: ANN003, ANN202
+        if kwargs["query"] == "bad":
+            raise APIError(502, "SEARCH_BACKEND_ERROR", "Tavily search failed.")
+        return {
+            "query": kwargs["query"],
+            "answer": "",
+            "results": [{"title": "T", "url": "https://ok.example/", "source": "ok.example"}],
+        }
+
+    monkeypatch.setattr(stream_runtime, "execute_tavily_search", _search)
+    completions = _install(
+        monkeypatch, ai_settings, [tool_round(["good", "bad"]), text_round("Answer [1].")]
+    )
+
+    events, sources = await _run()
+
+    assert "".join(_tokens(events)) == "Answer [1]."
+    assert len(sources) == 1
+    assert [payload["ok"] for payload in _tool_payloads(completions.requests[1])] == [True, False]
+
+
+# --- Failures --------------------------------------------------------------------
+
+
+async def test_empty_answer_raises_ai_error(monkeypatch, ai_settings, searches):
+    _install(monkeypatch, ai_settings, [tool_round(["a"]), text_round()])
+
+    with pytest.raises(APIError) as exc_info:
+        await _run()
+
+    assert exc_info.value.code == "AI_ERROR"
+
+
+async def test_create_retries_on_retryable_server_errors(monkeypatch, ai_settings, searches):
+    completions = _install(
+        monkeypatch, ai_settings, [_FakeAPIError(status_code=503), text_round("Recovered.")]
+    )
     monkeypatch.setattr(stream_runtime.asyncio, "sleep", _no_sleep)
 
-    events = await _collect_events()
-    token_text = "".join(event.get("text", "") for event in events if event.get("type") == "token")
+    events, _ = await _run(question="thanks")
 
-    assert "Recovered response." in token_text
-    assert fake_completions.create_calls == 2
+    assert "".join(_tokens(events)) == "Recovered."
+    assert len(completions.requests) == 2
 
 
-async def test_create_rate_limit_maps_retry_after_header(monkeypatch, ai_settings):
+async def test_create_rate_limit_maps_retry_after_header(monkeypatch, ai_settings, searches):
     class _FakeRateLimitError(Exception):
         def __init__(self) -> None:
             super().__init__("429")
             self.response = SimpleNamespace(status_code=429, headers={"Retry-After": "17"})
 
-    fake_completions = _FakeCompletions(create_responses=[_FakeRateLimitError()])
-    fake_client = _FakeClient(fake_completions)
-
-    monkeypatch.setattr(stream_runtime, "get_settings", lambda: ai_settings)
-    monkeypatch.setattr(stream_runtime, "get_openai_client", lambda: fake_client)
+    _install(monkeypatch, ai_settings, [_FakeRateLimitError()])
     monkeypatch.setattr(stream_runtime.openai, "RateLimitError", _FakeRateLimitError)
 
     with pytest.raises(APIError) as exc_info:
-        await _collect_events()
+        await _run()
 
     assert exc_info.value.code == "RATE_LIMITED"
     assert exc_info.value.headers.get("Retry-After") == "17"
 
 
-async def test_fails_when_model_exceeds_tool_call_limit(monkeypatch, ai_settings):
-    ai_settings.ai_tool_max_calls = 1
-    fake_completions = _FakeCompletions(
-        create_responses=[
-            _tool_use_response("first query", tool_use_id="call_1"),
-            _tool_use_response("second query", tool_use_id="call_2"),
-        ]
+# --- Privacy and mock mode ---------------------------------------------------------
+
+
+async def test_search_queries_never_logged(monkeypatch, ai_settings, searches, caplog):
+    caplog.set_level(logging.DEBUG)
+    _install(monkeypatch, ai_settings, [tool_round(["zebra-knee-ache-7731"]), text_round("A [1].")])
+
+    await _run()
+
+    assert "zebra-knee-ache-7731" not in caplog.text
+    assert all("zebra-knee-ache-7731" not in str(record.__dict__) for record in caplog.records)
+
+
+async def test_preamble_without_trailing_space_is_separated_from_answer(
+    monkeypatch, ai_settings, searches
+):
+    _install(
+        monkeypatch,
+        ai_settings,
+        [tool_round(["dizziness"], preamble="Let me look that up."), text_round("Rest helps [1].")],
     )
-    fake_client = _FakeClient(fake_completions)
 
-    async def _fake_tavily_search(**kwargs):  # noqa: ANN003
-        return {"query": kwargs["query"], "answer": "", "results": []}
+    events, _ = await _run()
 
-    monkeypatch.setattr(stream_runtime, "get_settings", lambda: ai_settings)
-    monkeypatch.setattr(stream_runtime, "get_openai_client", lambda: fake_client)
-    monkeypatch.setattr(stream_runtime, "execute_tavily_search", _fake_tavily_search)
-
-    with pytest.raises(APIError) as exc_info:
-        await _collect_events()
-
-    assert exc_info.value.code == "AI_ERROR"
+    assert "".join(_tokens(events)) == "Let me look that up.\n\nRest helps [1]."
 
 
-async def test_openrouter_key_enables_live_path(monkeypatch, ai_settings):
-    ai_settings.openrouter_api_key = "or-live-key"
-    ai_settings.anthropic_api_key = ""
+async def test_round_logs_name_the_serving_model(monkeypatch, ai_settings, searches, caplog):
+    caplog.set_level(logging.INFO)
+    served_by_fallback = [
+        _chunk(content="Rest helps [1].", model="openai/gpt-5.4"),
+        _chunk(finish_reason="stop", model="openai/gpt-5.4"),
+    ]
+    _install(monkeypatch, ai_settings, [tool_round(["dizziness"]), served_by_fallback])
 
-    fake_completions = _FakeCompletions(
-        create_responses=[_text_response("Live OpenRouter response.")]
-    )
-    fake_client = _FakeClient(fake_completions)
+    await _run()
 
-    monkeypatch.setattr(stream_runtime, "get_settings", lambda: ai_settings)
-    monkeypatch.setattr(stream_runtime, "get_openai_client", lambda: fake_client)
-
-    events = await _collect_events()
-    token_text = "".join(event.get("text", "") for event in events if event.get("type") == "token")
-
-    assert "Live OpenRouter response." in token_text
-    assert fake_completions.create_calls == 1
+    final = [r.getMessage() for r in caplog.records if "action=final_text" in r.getMessage()]
+    assert len(final) == 1
+    assert "model=openai/gpt-5.4" in final[0]
 
 
-async def test_openrouter_without_keys_falls_back_to_mock(monkeypatch, ai_settings):
+async def test_without_keys_mock_mode_cites_a_registered_source(monkeypatch, ai_settings):
     ai_settings.openrouter_api_key = ""
     ai_settings.anthropic_api_key = ""
-
     monkeypatch.setattr(stream_runtime, "get_settings", lambda: ai_settings)
 
-    events = await _collect_events()
-    token_text = "".join(event.get("text", "") for event in events if event.get("type") == "token")
+    events, sources = await _run()
 
-    assert any(event.get("type") == "tool_use" for event in events)
-    assert "What to do next" in token_text
+    text = "".join(_tokens(events))
+    assert "[1]" in text
+    assert "Sources:" not in text
+    assert len(sources) == 1

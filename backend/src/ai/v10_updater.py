@@ -5,10 +5,10 @@ import re
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from src.ai.client import get_openai_client
+from src.ai.client import chat_model_options, get_openai_client
 from src.ai.prompts import V10_UPDATE_SYSTEM_PROMPT, V10_UPDATE_USER_TEMPLATE
 from src.config import get_settings
-from src.services.profile_service import get_v10_digest, upsert_v10_digest
+from src.services.profile_service import get_v10_digest, upsert_v10_digest, usable_digest
 from src.utils import utcnow
 
 logger = logging.getLogger(__name__)
@@ -16,6 +16,11 @@ logger = logging.getLogger(__name__)
 _NON_MEDICAL_PATTERNS = [
     r"^(thanks?|thank you|ok|okay|got it|great|bye|goodbye)\s*[!.]*$",
 ]
+_MAX_DIGEST_CHARS = 5000
+# Reasoning models spend part of max_tokens on thinking before the profile text.
+_MAX_UPDATE_TOKENS = 3000
+_MAX_CONTEXT_ANSWER_CHARS = 1200
+_NO_CHANGE = "NO_CHANGE"
 
 
 def should_update_v10(user_question: str) -> bool:
@@ -31,7 +36,7 @@ def _heuristic_digest_update(current_digest: str, user_question: str) -> str:
     else:
         next_digest = f"{current_digest}\nRecent concerns ({now_label}): {user_question.strip()}"
 
-    return next_digest[:5000]
+    return next_digest[:_MAX_DIGEST_CHARS]
 
 
 def _can_use_ai_update() -> bool:
@@ -41,23 +46,33 @@ def _can_use_ai_update() -> bool:
     return bool(settings.openrouter_api_key or settings.anthropic_api_key)
 
 
-async def _update_digest_with_ai(
+def _is_no_change(reply: str) -> bool:
+    """Any reply whose first line says "no change" counts, so a chatty near-miss
+    ("NO_CHANGE - nothing new", "No changes.") never overwrites the profile."""
+    first_line = next((line for line in reply.splitlines() if line.strip()), "")
+    key = re.sub(r"[\s\-]+", "_", first_line.strip().strip("`*_.\"' ").upper())
+    return key.startswith(_NO_CHANGE)
+
+
+async def _ask_model_for_digest(
     current_digest: str,
     user_question: str,
     assistant_response: str,
-) -> str:
+) -> tuple[str, str | None]:
+    """Return the model's reply text and its finish reason."""
     settings = get_settings()
     client = get_openai_client()
 
     prompt = V10_UPDATE_USER_TEMPLATE.format(
-        current_digest=current_digest or "(No health profile set up yet)",
+        today=utcnow().strftime("%Y-%m-%d"),
+        current_digest=current_digest,
         user_question=user_question,
-        assistant_response=assistant_response[:1200],
+        assistant_response=assistant_response[:_MAX_CONTEXT_ANSWER_CHARS],
     )
 
     response = await client.chat.completions.create(
-        model=settings.anthropic_model,
-        max_tokens=600,
+        **chat_model_options(settings),
+        max_tokens=_MAX_UPDATE_TOKENS,
         temperature=0.1,
         messages=[
             {"role": "system", "content": V10_UPDATE_SYSTEM_PROMPT},
@@ -65,8 +80,13 @@ async def _update_digest_with_ai(
         ],
     )
 
-    text = response.choices[0].message.content or ""
-    return text.strip()[:5000]
+    choice = response.choices[0]
+    return (choice.message.content or "").strip(), getattr(choice, "finish_reason", None)
+
+
+def _skip(reason: str) -> bool:
+    logger.info("v10_update_skip reason=%s", reason)
+    return False
 
 
 async def update_v10_after_conversation(
@@ -75,49 +95,44 @@ async def update_v10_after_conversation(
     user_question: str,
     assistant_response: str,
 ) -> bool:
-    logger.info("v10_update_start question=%s", user_question[:80])
-
+    """Update the stored health profile from one exchange. Logs never contain text."""
     if not should_update_v10(user_question):
-        logger.info("v10_update_skip reason=non_medical")
-        return False
+        return _skip("non_medical")
 
-    existing = await get_v10_digest(db, firebase_uid)
-    current_digest = (existing or {}).get("digest", "")
-
-    if user_question in current_digest:
-        logger.info("v10_update_skip reason=already_in_digest")
-        return False
-
-    next_digest = ""
+    current_digest = usable_digest(await get_v10_digest(db, firebase_uid)) or ""
 
     if _can_use_ai_update():
         try:
-            next_digest = await _update_digest_with_ai(
+            reply, finish_reason = await _ask_model_for_digest(
                 current_digest=current_digest,
                 user_question=user_question,
                 assistant_response=assistant_response,
             )
-            logger.info("v10_update_ai_success len=%d", len(next_digest))
-        except Exception:
-            logger.warning(
-                "V10 AI update failed, falling back to heuristic",
-                exc_info=True,
-            )
-            next_digest = ""
+        except Exception as exc:
+            logger.warning("v10_update_skip reason=ai_error error=%s", type(exc).__name__)
+            return False
+        if finish_reason == "length":
+            return _skip("truncated")
+        if _is_no_change(reply):
+            return _skip("no_change")
+        next_digest = usable_digest({"digest": reply})
+        if next_digest is None:
+            return _skip("empty_or_placeholder")
+        if len(next_digest) > _MAX_DIGEST_CHARS:
+            return _skip("too_long")
     else:
-        logger.info("v10_update_skip_ai reason=no_api_key")
+        # Mock mode or no API key: keep a simple local record for development.
+        if user_question in current_digest:
+            return _skip("already_in_digest")
+        next_digest = _heuristic_digest_update(current_digest, user_question)
 
-    if not next_digest:
-        next_digest = _heuristic_digest_update(
-            current_digest=current_digest,
-            user_question=user_question,
-        )
-        logger.info("v10_update_heuristic len=%d", len(next_digest))
-
-    if not next_digest or next_digest == current_digest:
-        logger.info("v10_update_skip reason=no_change")
-        return False
+    if next_digest == current_digest:
+        return _skip("no_change")
 
     await upsert_v10_digest(db, firebase_uid=firebase_uid, digest=next_digest, source="auto")
-    logger.info("v10_update_saved source=auto")
+    logger.info(
+        "v10_update_saved source=auto previous_len=%d new_len=%d",
+        len(current_digest),
+        len(next_digest),
+    )
     return True

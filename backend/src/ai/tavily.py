@@ -30,6 +30,16 @@ def _source_from_url(url: str) -> str:
     return host or "unknown"
 
 
+def _include_answer_value(value: str) -> bool | str:
+    """Tavily expects false/true or "basic"/"advanced"; env values arrive as strings."""
+    lowered = value.strip().lower()
+    if lowered in {"", "false", "0", "no", "none", "off"}:
+        return False
+    if lowered in {"true", "1", "yes", "on"}:
+        return True
+    return lowered
+
+
 def _normalize_result(item: object) -> dict[str, Any] | None:
     if not isinstance(item, dict):
         return None
@@ -109,7 +119,7 @@ async def execute_tavily_search(
         "api_key": settings.tavily_api_key,
         "query": normalized_query,
         "search_depth": search_depth or settings.tavily_search_depth,
-        "include_answer": include_answer or settings.tavily_include_answer,
+        "include_answer": _include_answer_value(include_answer or settings.tavily_include_answer),
         "include_favicon": (
             settings.tavily_include_favicon if include_favicon is None else include_favicon
         ),
@@ -136,7 +146,7 @@ async def execute_tavily_search(
 
         logger.warning(
             "Tavily returned HTTP error",
-            extra={"status_code": status_code, "query": normalized_query[:120]},
+            extra={"status_code": status_code},
         )
         raise APIError(
             502,

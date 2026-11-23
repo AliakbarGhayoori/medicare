@@ -91,3 +91,42 @@ async def test_execute_tavily_search_requires_api_key(monkeypatch):
         await tavily.execute_tavily_search(query="dizziness")
 
     assert exc_info.value.code == "SEARCH_BACKEND_UNAVAILABLE"
+
+
+async def test_include_answer_false_is_sent_as_boolean(monkeypatch):
+    settings = SimpleNamespace(
+        tavily_api_key="tvly-test",
+        tavily_base_url="https://api.tavily.com",
+        tavily_search_depth="advanced",
+        tavily_include_answer="false",
+        tavily_include_favicon=True,
+        tavily_max_results=6,
+        tavily_timeout_seconds=20.0,
+    )
+    fake_client = _FakeAsyncClient(_FakeResponse(200, {"query": "q", "results": []}))
+    monkeypatch.setattr(tavily, "get_settings", lambda: settings)
+    monkeypatch.setattr(tavily.httpx, "AsyncClient", lambda **_: fake_client)
+
+    await tavily.execute_tavily_search("q")
+
+    assert fake_client.post_calls[0][1]["include_answer"] is False
+
+
+async def test_tavily_error_log_does_not_contain_query(monkeypatch, caplog):
+    settings = SimpleNamespace(
+        tavily_api_key="tvly-test",
+        tavily_base_url="https://api.tavily.com",
+        tavily_search_depth="advanced",
+        tavily_include_answer="false",
+        tavily_include_favicon=True,
+        tavily_max_results=6,
+        tavily_timeout_seconds=20.0,
+    )
+    fake_client = _FakeAsyncClient(_FakeResponse(500, {}))
+    monkeypatch.setattr(tavily, "get_settings", lambda: settings)
+    monkeypatch.setattr(tavily.httpx, "AsyncClient", lambda **_: fake_client)
+
+    with pytest.raises(APIError):
+        await tavily.execute_tavily_search("zebra-knee-ache-7731")
+
+    assert all("zebra-knee-ache-7731" not in str(record.__dict__) for record in caplog.records)

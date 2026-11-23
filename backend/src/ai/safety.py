@@ -93,9 +93,20 @@ _RESPONSE_EMERGENCY_CUES = [
     r"\bmedical\s+emergency\b",
 ]
 
+# Tolerates markdown decoration around the line (`SAFETY_SIGNAL: {...}`, **SAFETY_SIGNAL:** {...}).
 _SAFETY_SIGNAL_REGEX = re.compile(
-    r"^\s*SAFETY_SIGNAL:\s*(\{[^\n]*\})\s*$",
+    r"^[ \t`*_]*SAFETY_SIGNAL[`*_]*[ \t]*:[ \t`*_]*(\{[^\n]*?\})[ \t`*_.]*$\n?",
     re.IGNORECASE | re.MULTILINE,
+)
+_SIGNAL_TOKEN = "SAFETY_SIGNAL"
+_SIGNAL_DECORATION = "`*_ \t"
+
+CRISIS_RESOURCES = (
+    "\n\nIf you are thinking about harming yourself, please reach out now:\n"
+    "- In immediate danger: call your local emergency number (112 in Europe, 911 in the US "
+    "and Canada, 999 in the UK).\n"
+    "- US: call or text 988 (Suicide & Crisis Lifeline).\n"
+    "- Other countries: find a free, confidential helpline at https://findahelpline.com"
 )
 
 _VALID_CATEGORIES = {
@@ -156,44 +167,91 @@ def check_emergency(user_question: str, ai_response: str) -> tuple[bool, str | N
     return False, None
 
 
-def extract_ai_safety_signal(response_text: str) -> tuple[str, bool, str | None]:
-    """Extract AI-emitted safety signal and return cleaned response text.
+def extract_ai_safety_signal(response_text: str) -> tuple[str, bool | None, str | None]:
+    """Extract the AI-emitted safety signal and return the cleaned response text.
 
-    Expected line format at the end of the assistant response:
-    SAFETY_SIGNAL: {"requiresEmergencyCare": true|false, "category": "cardiac|...|none"}
+    Expected line (normally last): SAFETY_SIGNAL: {"requiresEmergencyCare": true|false,
+    "category": "cardiac|...|none"}. Returns ``None`` for the verdict when no usable
+    signal was found, so the caller can fall back to the keyword check.
     """
     matches = list(_SAFETY_SIGNAL_REGEX.finditer(response_text))
     if not matches:
-        return response_text.strip(), False, None
+        return response_text.strip(), None, None
 
-    signal_match = matches[-1]
-    raw_json = signal_match.group(1)
-
-    requires_emergency = False
-    category: str | None = None
+    cleaned = _SAFETY_SIGNAL_REGEX.sub("", response_text).strip()
     try:
-        parsed = json.loads(raw_json)
+        parsed = json.loads(matches[-1].group(1))
         raw_requires = parsed.get(
             "requiresEmergencyCare", parsed.get("requires_emergency_care", False)
         )
         raw_category = parsed.get("category", parsed.get("emergencyCategory", "none"))
+    except (json.JSONDecodeError, TypeError, ValueError, AttributeError):
+        return cleaned, None, None
 
-        requires_emergency = bool(raw_requires)
-        category_text = str(raw_category).strip().lower()
-        if category_text not in _VALID_CATEGORIES:
-            category_text = "general" if requires_emergency else "none"
-        category = None if category_text == "none" else category_text
-        if not requires_emergency:
-            category = None
-    except (json.JSONDecodeError, TypeError, ValueError):
-        # Invalid signal should never escalate emergency state.
-        requires_emergency = False
-        category = None
-
-    cleaned = (
-        f"{response_text[: signal_match.start()]}{response_text[signal_match.end() :]}".strip()
-    )
+    requires_emergency = bool(raw_requires)
+    category_text = str(raw_category).strip().lower()
+    if category_text not in _VALID_CATEGORIES:
+        category_text = "general" if requires_emergency else "none"
+    category = None if category_text == "none" or not requires_emergency else category_text
     return cleaned, requires_emergency, category
+
+
+def resolve_emergency(
+    user_question: str, ai_requires: bool | None, ai_category: str | None
+) -> tuple[bool, str | None]:
+    """The model's own verdict wins; the keyword check covers a missing signal."""
+    if ai_requires is not None:
+        return ai_requires, ai_category if ai_requires else None
+    return detect_emergency(user_question)
+
+
+class SafetySignalFilter:
+    """Hides the SAFETY_SIGNAL line from the live token stream.
+
+    Text is released as soon as it cannot be the start of a signal line; a line
+    whose content (ignoring markdown decoration) starts with SAFETY_SIGNAL is
+    dropped through its newline.
+    """
+
+    def __init__(self) -> None:
+        self._pending = ""
+        self._at_line_start = True
+        self._suppressing = False
+
+    def feed(self, text: str) -> str:
+        shown: list[str] = []
+        for char in text:
+            if self._suppressing:
+                if char == "\n":
+                    self._suppressing = False
+                    self._at_line_start = True
+                continue
+            if not self._at_line_start:
+                shown.append(char)
+                self._at_line_start = char == "\n"
+                continue
+            if char == "\n":
+                shown.append(self._pending + char)
+                self._pending = ""
+                continue
+            self._pending += char
+            core = self._pending.lstrip(_SIGNAL_DECORATION).upper()
+            if not core or _SIGNAL_TOKEN.startswith(core):
+                continue
+            if core.startswith(_SIGNAL_TOKEN):
+                self._pending = ""
+                self._suppressing = True
+                continue
+            shown.append(self._pending)
+            self._pending = ""
+            self._at_line_start = False
+        return "".join(shown)
+
+    def flush(self) -> str:
+        if self._suppressing:
+            return ""
+        remainder, self._pending = self._pending, ""
+        return remainder
 
 
 def assess_confidence(response_text: str, citations: Sequence[object]) -> str:

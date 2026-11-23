@@ -18,6 +18,9 @@ from src.middleware.error_handlers import register_exception_handlers
 configure_logging()
 logger = logging.getLogger(__name__)
 
+# Polled every few seconds by Docker and uptime checks; logging them is pure noise.
+_UNLOGGED_PATHS = frozenset({"/health"})
+
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
@@ -58,16 +61,17 @@ def create_app() -> FastAPI:
         response = await call_next(request)
         latency_ms = int((time.monotonic() - start) * 1000)
         response.headers["X-Request-ID"] = request_id
-        logger.info(
-            "request_complete",
-            extra={
-                "method": request.method,
-                "endpoint": request.url.path,
-                "status_code": response.status_code,
-                "latency_ms": latency_ms,
-                "request_id": request_id,
-            },
-        )
+        if request.url.path not in _UNLOGGED_PATHS:
+            logger.info(
+                "request_complete",
+                extra={
+                    "method": request.method,
+                    "endpoint": request.url.path,
+                    "status_code": response.status_code,
+                    "latency_ms": latency_ms,
+                    "request_id": request_id,
+                },
+            )
         return response
 
     app.include_router(chat.router, prefix="/api/chat", tags=["chat"])

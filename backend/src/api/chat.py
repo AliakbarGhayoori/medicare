@@ -11,8 +11,16 @@ from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from src.ai.citations import citations_as_dicts, extract_citations_from_response, validate_citations
-from src.ai.safety import assess_confidence, extract_ai_safety_signal
+from src.ai.citations import citations_as_dicts, finalize_citations
+from src.ai.safety import (
+    CRISIS_RESOURCES,
+    SafetySignalFilter,
+    assess_confidence,
+    extract_ai_safety_signal,
+    requires_crisis_resources,
+    resolve_emergency,
+)
+from src.ai.sources import SourceRegistry
 from src.ai.stream import generate_response_events
 from src.ai.v10_updater import update_v10_after_conversation
 from src.config import get_settings
@@ -34,7 +42,7 @@ from src.services.chat_service import (
     resolve_conversation_id,
     save_message,
 )
-from src.services.profile_service import get_v10_digest
+from src.services.profile_service import get_v10_digest, usable_digest
 from src.services.rate_limiter import check_rate_limit_with_retry
 from src.services.settings_service import ensure_user_document
 
@@ -93,7 +101,7 @@ async def ask(
     )
 
     v10_doc = await get_v10_digest(db, firebase_uid=user.uid)
-    v10_digest = v10_doc.get("digest") if v10_doc else None
+    v10_digest = usable_digest(v10_doc)
 
     await save_message(
         db=db,
@@ -115,6 +123,8 @@ async def ask(
 
     async def event_generator() -> AsyncIterator[str]:
         full_text = ""
+        signal_filter = SafetySignalFilter()
+        sources = SourceRegistry()
         stream_started = time.monotonic()
         first_token_ms: int | None = None
         try:
@@ -122,14 +132,18 @@ async def ask(
                 question=payload.question,
                 conversation_history=history,
                 v10_digest=v10_digest,
+                sources=sources,
             ):
                 event_type = event.get("type")
                 if event_type == "token":
                     chunk = str(event.get("text", ""))
                     full_text += chunk
+                    visible = signal_filter.feed(chunk)
+                    if not visible:
+                        continue
                     if first_token_ms is None:
                         first_token_ms = int((time.monotonic() - stream_started) * 1000)
-                    yield _sse("token", {"text": chunk})
+                    yield _sse("token", {"text": visible})
                 elif event_type == "tool_use":
                     yield _sse(
                         "tool_use",
@@ -140,22 +154,24 @@ async def ask(
                         },
                     )
 
-            signaled_text, requires_emergency_care, emergency_category = extract_ai_safety_signal(
-                full_text
+            tail = signal_filter.flush()
+            if tail:
+                yield _sse("token", {"text": tail})
+
+            signaled_text, ai_requires, ai_category = extract_ai_safety_signal(full_text)
+            clean_text, citations = finalize_citations(signaled_text, sources)
+            requires_emergency_care, emergency_category = resolve_emergency(
+                payload.question, ai_requires, ai_category
             )
-            clean_text, citations = extract_citations_from_response(signaled_text)
-            citations = validate_citations(clean_text, citations)
             confidence = assess_confidence(clean_text, citations)
 
-            if emergency_category == "self_harm":
-                crisis_block = (
-                    "\n\nCrisis support resources:\n"
-                    "- Call or text 988 (Suicide & Crisis Lifeline)\n"
-                    "- Crisis Text Line: text HOME to 741741\n"
-                    "- If in immediate danger, call 911 now."
-                )
-                if "988" not in clean_text:
-                    clean_text = f"{clean_text}{crisis_block}"
+            # The user's own words count too: a missed crisis costs far more than an
+            # extra helpline block on a question that only mentions self-harm.
+            wants_crisis_help = emergency_category == "self_harm" or requires_crisis_resources(
+                payload.question
+            )
+            if wants_crisis_help and not ("988" in clean_text or "findahelpline.com" in clean_text):
+                clean_text = f"{clean_text}{CRISIS_RESOURCES}"
 
             message_id = await save_message(
                 db=db,

@@ -5,6 +5,22 @@ from pymongo import ReturnDocument
 
 from src.utils import utcnow
 
+# Text an older updater stored when a user had no profile. It is not medical
+# information and must never be shown or sent to the model as one.
+PLACEHOLDER_DIGESTS: frozenset[str] = frozenset({"(No health profile set up yet)"})
+_PLACEHOLDER_KEYS = frozenset(text.casefold() for text in PLACEHOLDER_DIGESTS)
+
+
+def usable_digest(doc: dict | None) -> str | None:
+    """The stored profile text, or None when it is missing, blank or a placeholder."""
+    digest = (doc or {}).get("digest")
+    if not isinstance(digest, str):
+        return None
+    text = digest.strip()
+    if not text or text.casefold() in _PLACEHOLDER_KEYS:
+        return None
+    return text
+
 
 async def get_v10_digest(db: AsyncIOMotorDatabase, firebase_uid: str) -> dict | None:
     return await db.v10Memories.find_one({"firebaseUid": firebase_uid})

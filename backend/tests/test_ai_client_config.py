@@ -3,6 +3,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 from src.ai import client as ai_client
+from src.config import Settings
 
 
 class _FakeAsyncOpenAI:
@@ -56,3 +57,47 @@ def test_get_openai_client_uses_anthropic_key_as_fallback(
     assert client.kwargs["base_url"] == "https://openrouter.ai/api/v1"
 
     ai_client._client = None
+
+
+def test_ai_model_env_takes_precedence_over_legacy_name(monkeypatch) -> None:
+    monkeypatch.setenv("AI_MODEL", "a/x")
+    monkeypatch.setenv("ANTHROPIC_MODEL", "b/y")
+    assert Settings(_env_file=None).ai_model == "a/x"
+
+
+def test_legacy_anthropic_model_env_still_selects_model(monkeypatch) -> None:
+    monkeypatch.delenv("AI_MODEL", raising=False)
+    monkeypatch.setenv("ANTHROPIC_MODEL", "b/y")
+    assert Settings(_env_file=None).ai_model == "b/y"
+
+
+def test_fallback_models_parse_from_comma_separated_env(monkeypatch) -> None:
+    monkeypatch.setenv("AI_FALLBACK_MODELS", "openai/gpt-5.4, x/y")
+    assert Settings(_env_file=None).ai_fallback_models == ["openai/gpt-5.4", "x/y"]
+
+
+def test_fallback_models_parse_from_json_env(monkeypatch) -> None:
+    monkeypatch.setenv("AI_FALLBACK_MODELS", '["openai/gpt-5.4"]')
+    assert Settings(_env_file=None).ai_fallback_models == ["openai/gpt-5.4"]
+
+
+def test_chat_model_options_adds_openrouter_fallback_list() -> None:
+    settings = SimpleNamespace(
+        ai_model="google/gemini-4-neon",
+        ai_fallback_models=["google/gemini-4-neon", "openai/gpt-5.4"],
+        ai_reasoning_effort=None,
+    )
+    assert ai_client.chat_model_options(settings) == {
+        "model": "google/gemini-4-neon",
+        "extra_body": {"models": ["google/gemini-4-neon", "openai/gpt-5.4"]},
+    }
+
+
+def test_chat_model_options_without_fallbacks_or_effort_has_no_extra_body() -> None:
+    settings = SimpleNamespace(ai_model="m", ai_fallback_models=[], ai_reasoning_effort=None)
+    assert ai_client.chat_model_options(settings) == {"model": "m"}
+
+
+def test_chat_model_options_passes_reasoning_effort() -> None:
+    settings = SimpleNamespace(ai_model="m", ai_fallback_models=[], ai_reasoning_effort="low")
+    assert ai_client.chat_model_options(settings)["extra_body"] == {"reasoning": {"effort": "low"}}

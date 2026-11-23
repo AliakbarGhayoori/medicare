@@ -6,7 +6,8 @@ from types import SimpleNamespace
 import pytest
 from openai import AsyncOpenAI
 
-from src.ai.citations import extract_citations_from_response
+from src.ai.citations import finalize_citations
+from src.ai.sources import SourceRegistry
 from src.ai.stream import generate_response_events
 
 pytestmark = pytest.mark.skipif(
@@ -46,8 +47,10 @@ def _live_settings() -> SimpleNamespace:
         openrouter_base_url=os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api"),
         openrouter_site_url=os.getenv("OPENROUTER_SITE_URL", ""),
         openrouter_app_name=os.getenv("OPENROUTER_APP_NAME", ""),
-        anthropic_model=os.getenv("ANTHROPIC_MODEL", "google/gemini-3.1-pro-preview"),
-        anthropic_max_tokens=int(os.getenv("ANTHROPIC_MAX_TOKENS", "1024")),
+        ai_model=os.getenv("AI_MODEL", os.getenv("ANTHROPIC_MODEL", "google/gemini-4-neon")),
+        ai_fallback_models=[],
+        ai_reasoning_effort=None,
+        ai_max_tokens=int(os.getenv("AI_MAX_TOKENS", "8192")),
         ai_temperature=float(os.getenv("AI_TEMPERATURE", "0.3")),
         max_conversation_context_messages=20,
         sse_chunk_size=120,
@@ -64,7 +67,9 @@ def _live_settings() -> SimpleNamespace:
     )
 
 
-async def _ask_live(monkeypatch: pytest.MonkeyPatch, question: str) -> str:
+async def _ask_live(
+    monkeypatch: pytest.MonkeyPatch, question: str, sources: SourceRegistry | None = None
+) -> str:
     settings = _live_settings()
 
     api_key = settings.openrouter_api_key or settings.anthropic_api_key
@@ -88,6 +93,7 @@ async def _ask_live(monkeypatch: pytest.MonkeyPatch, question: str) -> str:
         question=question,
         conversation_history=[],
         v10_digest=None,
+        sources=sources if sources is not None else SourceRegistry(),
     ):
         if event.get("type") == "token":
             chunks.append(str(event.get("text", "")))
@@ -104,7 +110,8 @@ async def test_live_emergency_scenarios(monkeypatch: pytest.MonkeyPatch, scenari
 
 @pytest.mark.parametrize("question", CITATION_SCENARIOS)
 async def test_live_citation_presence(monkeypatch: pytest.MonkeyPatch, question: str) -> None:
-    response = await _ask_live(monkeypatch, question)
-    clean_text, citations = extract_citations_from_response(response)
+    sources = SourceRegistry()
+    response = await _ask_live(monkeypatch, question, sources)
+    clean_text, citations = finalize_citations(response, sources)
     assert clean_text
     assert len(citations) >= 1
