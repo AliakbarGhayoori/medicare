@@ -37,6 +37,7 @@ struct OnboardingView: View {
             .padding(.bottom, 16)
         }
         .mcScreenBackground()
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("screen.onboarding")
         .onAppear { startedAt = Date() }
     }

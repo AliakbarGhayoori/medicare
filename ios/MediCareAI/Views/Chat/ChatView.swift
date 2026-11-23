@@ -107,6 +107,7 @@ struct ChatView: View {
         .background(Color.mcSurface.ignoresSafeArea())
         .navigationTitle(conversation?.title ?? "")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.hidden, for: .tabBar)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 listenButton

@@ -45,6 +45,18 @@ extension XCUIApplication {
         }
     }
 
+    /// Swipes up until the element exists. List rows below the fold are only created when
+    /// they scroll into view.
+    @discardableResult
+    func scrollUntilExists(_ element: XCUIElement, maxSwipes: Int = 6) -> Bool {
+        var swipes = 0
+        while !element.waitForExistence(timeout: 1), swipes < maxSwipes {
+            swipeUp()
+            swipes += 1
+        }
+        return element.exists
+    }
+
     /// Types into a field, tapping it first.
     func type(_ text: String, into identifier: String, timeout: TimeInterval = 8) {
         let field = element(identifier)

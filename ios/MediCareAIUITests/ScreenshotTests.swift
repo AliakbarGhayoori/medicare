@@ -117,6 +117,10 @@ final class ScreenshotTests: XCTestCase {
         XCTAssertTrue(app.switches["settings.highContrast"].waitForExistence(timeout: 8))
         pause(0.8)
         snap(app, scheme, "12-settings")
+        if app.scrollUntilExists(app.buttons["settings.logout"]) {
+            pause(0.6)
+            snap(app, scheme, "13-settings-bottom")
+        }
         app.terminate()
     }
 

@@ -166,10 +166,13 @@ final class AuthFlowTests: XCTestCase {
 
         XCTAssertTrue(app.tabBars.buttons["Settings"].waitForExistence(timeout: 15))
         app.tabBars.buttons["Settings"].tap()
+        XCTAssertTrue(app.switches["settings.highContrast"].waitForExistence(timeout: 8))
         let logout = app.buttons["settings.logout"]
-        XCTAssertTrue(logout.waitForExistence(timeout: 8))
+        XCTAssertTrue(app.scrollUntilExists(logout), "Log out should be at the bottom of Settings")
         logout.tap()
-        app.alerts.buttons["Log out"].tap()
+        let confirm = app.alerts.buttons["Log out"]
+        XCTAssertTrue(confirm.waitForExistence(timeout: 5))
+        confirm.tap()
 
         XCTAssertTrue(app.buttons["login.submit"].waitForExistence(timeout: 10))
     }
