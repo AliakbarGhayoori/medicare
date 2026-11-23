@@ -35,7 +35,8 @@ final class MediCareAITests: XCTestCase {
         }
 
         XCTAssertNotNil(donePayload)
-        XCTAssertEqual(donePayload?.citations.count, 1)
+        XCTAssertEqual(donePayload?.citations.count, 2)
+        XCTAssertEqual(AnswerLayout.parse(donePayload?.content ?? "").doThis.count, 3)
 
         let history = try await service.fetchHistory(limit: 20, before: nil)
         XCTAssertEqual(history.conversations.count, 1)
@@ -48,6 +49,37 @@ final class MediCareAITests: XCTestCase {
         )
         XCTAssertGreaterThanOrEqual(messages.messages.count, 2)
         XCTAssertEqual(messages.messages.last?.role, .assistant)
+    }
+
+    func testMockEmergencyAnswerUsesTheLocalNumber() async throws {
+        let service = MockAPIService()
+        let stream = try await service.streamChat(question: "I have chest pain going down my arm", conversationId: nil)
+
+        var donePayload: ChatDonePayload?
+        for try await event in stream {
+            if case .done(let payload) = event {
+                donePayload = payload
+            }
+        }
+
+        XCTAssertEqual(donePayload?.requiresEmergencyCare, true)
+        XCTAssertTrue(donePayload?.content?.contains("Call \(EmergencyNumber.current) now.") ?? false)
+        if EmergencyNumber.current != "911" {
+            XCTAssertFalse(donePayload?.content?.contains("911") ?? true)
+        }
+    }
+
+    func testSeededMockHasChatsAndAProfileUpdatedFromAChat() async throws {
+        let service = MockAPIService(seeded: true)
+
+        let history = try await service.fetchHistory(limit: 20, before: nil)
+        let profile = try await service.fetchV10()
+
+        XCTAssertEqual(history.conversations.count, 3)
+        XCTAssertEqual(history.conversations.first?.title, "Is coffee okay with metformin in the morning?")
+        XCTAssertEqual(profile.lastUpdateSource, "auto")
+        XCTAssertTrue(profile.canRevert)
+        XCTAssertEqual(HealthProfileSections.parse(profile.digest ?? "").map(\.kind), [.about, .conditions, .medicines, .allergies, .concerns])
     }
 
     func testMockAPISettingsAndV10Updates() async throws {

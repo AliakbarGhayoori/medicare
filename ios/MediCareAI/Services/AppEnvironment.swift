@@ -25,3 +25,25 @@ struct AppEnvironment {
         )
     }()
 }
+
+/// Switches that only UI tests set. They do nothing unless the app runs with the mock
+/// sign-in and the mock API, so the App Store build can never use them.
+enum UITestHooks {
+    private static var environment: [String: String] { ProcessInfo.processInfo.environment }
+
+    /// Fills the mock API with sample chats and a health profile, for screenshots.
+    static var seedsData: Bool {
+        AppEnvironment.current.useMockAPI && environment["UITEST_SEED_DATA"] == "true"
+    }
+
+    /// Starts with a signed-in sample account named Inge.
+    static var startsSignedIn: Bool {
+        AppEnvironment.current.useMockAuth && environment["UITEST_SIGNED_IN"] == "true"
+    }
+
+    /// "light" or "dark" to force an appearance.
+    static var colorScheme: String? {
+        guard AppEnvironment.current.useMockAuth else { return nil }
+        return environment["UITEST_COLOR_SCHEME"]
+    }
+}

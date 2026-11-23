@@ -39,6 +39,9 @@ final class AuthService: AuthServicing {
 
     init(environment: AppEnvironment = .current) {
         self.environment = environment
+        if environment.useMockAuth && UITestHooks.startsSignedIn {
+            mockSession = AuthSession(uid: "uid_uitest", email: "inge@example.com", displayName: "Inge")
+        }
         configureFirebaseIfAvailable()
     }
 

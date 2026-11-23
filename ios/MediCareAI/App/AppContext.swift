@@ -25,6 +25,10 @@ final class AppContext: ObservableObject {
         if processEnv["UITEST_ONBOARDING_COMPLETED"] == "true" {
             UserDefaults.standard.set(true, forKey: onboardingKey)
             self.hasCompletedOnboarding = true
+        } else if processEnv["UITEST_ONBOARDING_COMPLETED"] == "false" {
+            UserDefaults.standard.set(false, forKey: onboardingKey)
+            UserDefaults.standard.set(0, forKey: "mc.onboarding.page")
+            self.hasCompletedOnboarding = false
         } else {
             self.hasCompletedOnboarding = UserDefaults.standard.bool(forKey: onboardingKey)
         }
@@ -36,7 +40,7 @@ final class AppContext: ObservableObject {
         let analyticsService = AnalyticsService.shared
         let apiService: any APIServicing
         if AppEnvironment.current.useMockAPI {
-            apiService = MockAPIService()
+            apiService = MockAPIService(seeded: UITestHooks.seedsData)
         } else {
             apiService = APIService(environment: .current, authService: authService)
         }

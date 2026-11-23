@@ -99,6 +99,7 @@ struct ChatWelcome: View {
                             Image(systemName: "square.and.pencil")
                                 .font(.body)
                                 .foregroundStyle(Color.mcBlueText)
+                                .accessibilityHidden(true)
                         }
                         .padding(.horizontal, 16)
                         .padding(.vertical, 12)

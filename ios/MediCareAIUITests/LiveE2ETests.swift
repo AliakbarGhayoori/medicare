@@ -3,6 +3,8 @@ import UIKit
 
 /// Full end-to-end tests that run against the live backend (Firebase auth + real AI).
 /// Prerequisite: backend running on localhost:8000 with .env.live configuration.
+/// They only run when RUN_LIVE_E2E=1 is set for the test run (CI has no live backend).
+/// They still use the screens from version 1.0 and need updating for the 1.1 design.
 final class LiveE2ETests: XCTestCase {
     let app = XCUIApplication()
     static var testEmail = "e2eui-\(Int(Date().timeIntervalSince1970))@medicare-test.com"
@@ -10,6 +12,10 @@ final class LiveE2ETests: XCTestCase {
     static var didResetAuthState = false
 
     override func setUpWithError() throws {
+        try XCTSkipUnless(
+            ProcessInfo.processInfo.environment["RUN_LIVE_E2E"] == "1",
+            "Live tests need the local backend and Firebase; set RUN_LIVE_E2E=1 to run them."
+        )
         continueAfterFailure = false
         app.launchArguments = [
             "--uitesting",
@@ -390,7 +396,7 @@ final class LiveE2ETests: XCTestCase {
             takeScreenshot(name: "Flow7-HealthProfile-Saved")
 
             // Verify profile is saved
-            let savedConfirmation = app.staticTexts["Health profile saved."]
+            let savedConfirmation = app.staticTexts["Your health profile is saved."]
             if savedConfirmation.waitForExistence(timeout: 10) {
                 takeScreenshot(name: "Flow7-HealthProfile-Confirmed")
             }

@@ -1,233 +1,176 @@
 import XCTest
 
+/// The main journeys against the mock sign-in and mock API.
 final class AuthFlowTests: XCTestCase {
-    let app = XCUIApplication()
-    private var authMode: String = "mock"
-    private var apiMode: String = "mock"
-    private var apiBaseURL: String?
-
     override func setUpWithError() throws {
         continueAfterFailure = false
-        app.launchArguments = ["--uitesting"]
-        authMode = ProcessInfo.processInfo.environment["UITEST_AUTH_MODE"]
-            ?? ProcessInfo.processInfo.environment["AUTH_MODE"]
-            ?? "mock"
-        apiMode = ProcessInfo.processInfo.environment["UITEST_API_MODE"]
-            ?? ProcessInfo.processInfo.environment["API_MODE"]
-            ?? "mock"
-        apiBaseURL = ProcessInfo.processInfo.environment["UITEST_API_BASE_URL"]
-            ?? ProcessInfo.processInfo.environment["API_BASE_URL"]
-        app.launchEnvironment["AUTH_MODE"] = authMode
-        app.launchEnvironment["API_MODE"] = apiMode
-        app.launchEnvironment["UITEST_VERBOSE_ERRORS"] = "true"
-        if let apiBaseURL {
-            app.launchEnvironment["API_BASE_URL"] = apiBaseURL
-        }
-        app.launchEnvironment["UITEST_ONBOARDING_COMPLETED"] = "true"
-        app.launchEnvironment["UITEST_CLEAR_KEYCHAIN"] = "true"
-        app.launch()
     }
+
+    // MARK: - Sign in and sign up
 
     func testLoginScreenAppears() throws {
-        XCTAssertTrue(app.navigationBars["Login"].waitForExistence(timeout: 5))
+        let app = XCUIApplication.mock(signedIn: false)
+        app.launch()
+
+        XCTAssertTrue(app.buttons["login.submit"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["login.createAccount"].exists)
     }
 
-    func testSignUpFlowReachesMainTabs() throws {
+    func testSignUpGreetsByFirstName() throws {
+        let app = XCUIApplication.mock(signedIn: false)
+        app.launch()
+
+        XCTAssertTrue(app.buttons["login.createAccount"].waitForExistence(timeout: 10))
         app.buttons["login.createAccount"].tap()
-
-        let emailField = app.textFields["signup.email"]
-        XCTAssertTrue(emailField.waitForExistence(timeout: 5))
-        emailField.tap()
-        emailField.typeText(makeUniqueEmail())
-
-        let passwordField = app.secureTextFields["signup.password"]
-        passwordField.tap()
-        passwordField.typeText("TestPass1234")
-
-        let confirmField = app.secureTextFields["signup.confirmPassword"]
-        confirmField.tap()
-        confirmField.typeText("TestPass1234")
-        dismissStrongPasswordPromptIfPresent()
+        app.type("inge", into: "signup.firstName")
+        app.type("inge@example.com", into: "signup.email")
+        app.type("TestPass1234", into: "signup.password")
+        app.type("TestPass1234", into: "signup.confirmPassword")
 
         let submit = app.buttons["signup.submit"]
-        XCTAssertTrue(waitForButtonEnabled(submit, timeout: 6), "Sign up submit should become enabled")
+        XCTAssertTrue(submit.waitUntilEnabled(timeout: 6), "Create account should be enabled")
         submit.tap()
-        assertReachedMainTabsAfterAuth(timeout: 15)
+
+        let greeting = app.element("home.greeting")
+        XCTAssertTrue(greeting.waitForExistence(timeout: 15), "Home should open after sign-up")
+        XCTAssertTrue(greeting.label.hasSuffix(", Inge"), "Greeting was: \(greeting.label)")
+        XCTAssertTrue(app.tabBars.buttons["Home"].exists)
+        XCTAssertTrue(app.tabBars.buttons["My health"].exists)
+        XCTAssertTrue(app.tabBars.buttons["Settings"].exists)
     }
 
     func testSignUpButtonDisabledWhenPasswordsMismatch() throws {
+        let app = XCUIApplication.mock(signedIn: false)
+        app.launch()
+
+        XCTAssertTrue(app.buttons["login.createAccount"].waitForExistence(timeout: 10))
         app.buttons["login.createAccount"].tap()
-
-        let emailField = app.textFields["signup.email"]
-        XCTAssertTrue(emailField.waitForExistence(timeout: 5))
-        emailField.tap()
-        emailField.typeText(makeUniqueEmail())
-
-        let passwordField = app.secureTextFields["signup.password"]
-        passwordField.tap()
-        passwordField.typeText("TestPass1234")
-
-        let confirmField = app.secureTextFields["signup.confirmPassword"]
-        confirmField.tap()
-        confirmField.typeText("Mismatch1234")
-        dismissStrongPasswordPromptIfPresent()
+        app.type("inge@example.com", into: "signup.email")
+        app.type("TestPass1234", into: "signup.password")
+        app.type("Mismatch1234", into: "signup.confirmPassword")
 
         XCTAssertFalse(app.buttons["signup.submit"].isEnabled)
     }
 
-    func testChatStreamFlowWithMockAPI() throws {
-        completeSignUpFlowIfNeeded()
+    // MARK: - Asking
 
-        app.buttons["chat.newConversation"].tap()
+    func testAskFromHomeShowsASectionedAnswerWithSources() throws {
+        let app = XCUIApplication.mock(signedIn: true)
+        app.launch()
 
-        let input = app.textFields["chat.input"]
-        XCTAssertTrue(input.waitForExistence(timeout: 5))
-        input.tap()
-        input.typeText("I feel dizzy when standing")
-        app.buttons["chat.send"].tap()
+        app.type("Is coffee okay with metformin?", into: "home.input", timeout: 15)
+        app.element("home.send").tap()
 
-        let assistantMessage = app.staticTexts["Assistant message"].firstMatch
-        XCTAssertTrue(assistantMessage.waitForExistence(timeout: 20))
-        let assistantValue = (assistantMessage.value as? String) ?? ""
-        XCTAssertGreaterThan(assistantValue.count, 40)
-        if apiMode == "mock" {
-            let citation = app.buttons["Citation 1"]
-            XCTAssertTrue(citation.waitForExistence(timeout: 6))
-        }
+        XCTAssertTrue(app.buttons["citation.1"].waitForExistence(timeout: 15), "Sources should show")
+        XCTAssertTrue(app.buttons["citation.3"].exists)
+        XCTAssertTrue(app.element("answer.lead").exists, "The short answer should show")
+        XCTAssertTrue(app.element("answer.doThis").exists)
+        XCTAssertTrue(app.element("answer.watchFor").exists)
+        XCTAssertTrue(app.element("chat.listen").waitForExistence(timeout: 5))
+
+        app.buttons["citation.2"].tap()
+        XCTAssertTrue(app.buttons["citation.done"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Caffeine and diabetes"].exists)
+        app.buttons["citation.done"].tap()
     }
 
-    func testV10EditFlowWithMockAPI() throws {
-        completeSignUpFlowIfNeeded()
+    func testTopicFillsTheQuestionWithoutSending() throws {
+        let app = XCUIApplication.mock(signedIn: true)
+        app.launch()
 
-        app.tabBars.buttons["Health Profile"].tap()
-        let setupButton = app.buttons["v10.setup"]
-        let editButton = app.buttons["v10.edit"]
-        XCTAssertTrue(setupButton.waitForExistence(timeout: 8) || editButton.waitForExistence(timeout: 8))
-        if setupButton.exists {
-            setupButton.tap()
-        } else {
-            editButton.tap()
-        }
+        let topic = app.element("home.topic.medicines")
+        XCTAssertTrue(topic.waitForExistence(timeout: 15))
+        topic.tap()
+        XCTAssertTrue(app.element("chat.welcome").waitForExistence(timeout: 5))
 
-        let editor = app.textViews["v10.editor"]
-        XCTAssertTrue(editor.waitForExistence(timeout: 5))
-        editor.tap()
-        editor.typeText("Conditions: Hypertension")
+        let example = "Can I take ibuprofen with my blood pressure tablets?"
+        app.buttons[example].tap()
+
+        let input = app.element("chat.input")
+        XCTAssertTrue(input.waitForExistence(timeout: 5))
+        XCTAssertEqual(input.value as? String, example)
+        XCTAssertFalse(app.element("chat.status").waitForExistence(timeout: 2), "Nothing should be sent")
+        XCTAssertFalse(app.buttons["citation.1"].exists)
+    }
+
+    func testEmergencyAnswerCallsTheLocalNumber() throws {
+        let app = XCUIApplication.mock(signedIn: true, locale: "en_US")
+        app.launch()
+
+        app.type("I have chest pain going down my left arm", into: "home.input", timeout: 15)
+        app.element("home.send").tap()
+
+        let call = app.buttons["chat.callEmergency"]
+        XCTAssertTrue(call.waitForExistence(timeout: 15))
+        XCTAssertEqual(call.label, "Call 911")
+    }
+
+    // MARK: - My health
+
+    func testHealthProfileSaves() throws {
+        let app = XCUIApplication.mock(signedIn: true)
+        app.launch()
+
+        XCTAssertTrue(app.tabBars.buttons["My health"].waitForExistence(timeout: 15))
+        app.tabBars.buttons["My health"].tap()
+        let setup = app.buttons["v10.setup"]
+        XCTAssertTrue(setup.waitForExistence(timeout: 8))
+        setup.tap()
+
+        app.type("Conditions: Hypertension", into: "v10.editor")
         app.buttons["v10.save"].tap()
 
-        XCTAssertTrue(app.staticTexts["Health profile saved."].waitForExistence(timeout: 8))
+        XCTAssertTrue(app.staticTexts["Hypertension"].waitForExistence(timeout: 8))
+        XCTAssertTrue(app.staticTexts["Conditions"].exists)
+        XCTAssertTrue(app.buttons["v10.edit"].exists)
     }
 
-    func testSettingsToggleFlowWithMockAPI() throws {
-        completeSignUpFlowIfNeeded()
+    func testUndoRemovesWhatAChatAdded() throws {
+        let app = XCUIApplication.mock(signedIn: true, seeded: true)
+        app.launch()
 
+        XCTAssertTrue(app.tabBars.buttons["My health"].waitForExistence(timeout: 15))
+        app.tabBars.buttons["My health"].tap()
+        XCTAssertTrue(app.staticTexts["Dizzy spells in the morning"].waitForExistence(timeout: 8))
+
+        app.buttons["v10.undo"].tap()
+
+        XCTAssertTrue(app.staticTexts["Dizzy spells in the morning"].waitUntilGone(timeout: 8))
+        XCTAssertTrue(app.staticTexts["Metformin 500 mg with breakfast"].exists)
+    }
+
+    // MARK: - Settings
+
+    func testHighContrastToggles() throws {
+        let app = XCUIApplication.mock(signedIn: true)
+        app.launch()
+
+        XCTAssertTrue(app.tabBars.buttons["Settings"].waitForExistence(timeout: 15))
         app.tabBars.buttons["Settings"].tap()
-        let highContrast = app.switches["settings.highContrast"]
-        XCTAssertTrue(highContrast.waitForExistence(timeout: 5))
+        let toggle = app.switches["settings.highContrast"]
+        XCTAssertTrue(toggle.waitForExistence(timeout: 8))
+        let before = toggle.value as? String
 
-        let originalValue = highContrast.value as? String
-        // Tap near the control knob to avoid tapping the row label area on some simulator builds.
-        highContrast.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
-        XCTAssertTrue(waitForSwitchValueChange(highContrast, from: originalValue, timeout: 8))
-    }
+        toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
 
-    private func completeSignUpFlowIfNeeded() {
-        if app.tabBars.buttons["Chat"].exists {
-            return
-        }
-
-        app.buttons["login.createAccount"].tap()
-
-        let emailField = app.textFields["signup.email"]
-        XCTAssertTrue(emailField.waitForExistence(timeout: 5))
-        emailField.tap()
-        emailField.typeText(makeUniqueEmail())
-
-        let passwordField = app.secureTextFields["signup.password"]
-        passwordField.tap()
-        passwordField.typeText("TestPass1234")
-
-        let confirmField = app.secureTextFields["signup.confirmPassword"]
-        confirmField.tap()
-        confirmField.typeText("TestPass1234")
-        dismissStrongPasswordPromptIfPresent()
-
-        let submit = app.buttons["signup.submit"]
-        XCTAssertTrue(waitForButtonEnabled(submit, timeout: 6), "Sign up submit should become enabled")
-        submit.tap()
-        assertReachedMainTabsAfterAuth(timeout: 15)
-    }
-
-    private func makeUniqueEmail() -> String {
-        if authMode == "firebase" {
-            let millis = Int(Date().timeIntervalSince1970 * 1000)
-            return "ui-live-\(millis)@medicare-test.com"
-        }
-        return "test@example.com"
-    }
-
-    private func waitForSwitchValueChange(
-        _ toggle: XCUIElement,
-        from originalValue: String?,
-        timeout: TimeInterval
-    ) -> Bool {
-        let predicate = NSPredicate { evaluated, _ in
-            guard let element = evaluated as? XCUIElement else { return false }
-            return (element.value as? String) != originalValue
-        }
-        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: toggle)
-        return XCTWaiter.wait(for: [expectation], timeout: timeout) == .completed
-    }
-
-    private func waitForButtonEnabled(_ button: XCUIElement, timeout: TimeInterval) -> Bool {
-        let predicate = NSPredicate { evaluated, _ in
-            guard let element = evaluated as? XCUIElement else { return false }
-            return element.exists && element.isEnabled
-        }
-        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: button)
-        return XCTWaiter.wait(for: [expectation], timeout: timeout) == .completed
-    }
-
-    private func dismissStrongPasswordPromptIfPresent() {
-        let closeByLabel = app.buttons["Close"]
-        if closeByLabel.waitForExistence(timeout: 1.5) {
-            closeByLabel.tap()
-            return
-        }
-
-        let closeByIdentifier = app.buttons["xmark"]
-        if closeByIdentifier.waitForExistence(timeout: 1.0) {
-            closeByIdentifier.tap()
-        }
-    }
-
-    private func assertReachedMainTabsAfterAuth(
-        timeout: TimeInterval,
-        file: StaticString = #filePath,
-        line: UInt = #line
-    ) {
-        let chatTab = app.tabBars.buttons["Chat"]
-        if chatTab.waitForExistence(timeout: timeout) {
-            return
-        }
-
-        let possibleErrors = [
-            "We could not create your account. Double-check your details and try again.",
-            "That email and password do not match our records.",
-            "We could not send a password reset email right now.",
-            "The operation couldn’t be completed."
-        ]
-
-        let visibleError = possibleErrors.first { app.staticTexts[$0].exists } ?? "No known auth error text visible"
-        let progressVisible = app.activityIndicators.firstMatch.exists
-            || app.progressIndicators.firstMatch.exists
-        let submitButton = app.buttons["signup.submit"]
-        let submitEnabled = submitButton.exists ? submitButton.isEnabled : false
-        let uiSnapshot = String(app.debugDescription.prefix(10000))
-        XCTFail(
-            "Did not reach authenticated tabs within \(Int(timeout))s. Visible error: \(visibleError). ProgressVisible=\(progressVisible). SignupSubmitEnabled=\(submitEnabled)\nUI Snapshot:\n\(uiSnapshot)",
-            file: file,
-            line: line
+        let changed = XCTNSPredicateExpectation(
+            predicate: NSPredicate { element, _ in ((element as? XCUIElement)?.value as? String) != before },
+            object: toggle
         )
+        XCTAssertEqual(XCTWaiter.wait(for: [changed], timeout: 8), .completed)
+    }
+
+    func testLogOutReturnsToSignIn() throws {
+        let app = XCUIApplication.mock(signedIn: true)
+        app.launch()
+
+        XCTAssertTrue(app.tabBars.buttons["Settings"].waitForExistence(timeout: 15))
+        app.tabBars.buttons["Settings"].tap()
+        let logout = app.buttons["settings.logout"]
+        XCTAssertTrue(logout.waitForExistence(timeout: 8))
+        logout.tap()
+        app.alerts.buttons["Log out"].tap()
+
+        XCTAssertTrue(app.buttons["login.submit"].waitForExistence(timeout: 10))
     }
 }

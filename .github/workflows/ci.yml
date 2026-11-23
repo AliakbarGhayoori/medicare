@@ -2,9 +2,10 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, "phase3-**"]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   backend-lint-test:
@@ -33,6 +34,7 @@ jobs:
 
   ios-build-test:
     runs-on: macos-latest
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v5
       - name: Install XcodeGen
@@ -65,5 +67,31 @@ jobs:
             -scheme MediCareAI \
             -destination "id=${{ steps.simulator.outputs.udid }}" \
             -configuration Debug \
+            -resultBundlePath "$RUNNER_TEMP/TestResults.xcresult" \
             CODE_SIGNING_ALLOWED=NO \
             test
+      - name: Export screenshots
+        if: always()
+        run: |
+          OUT="$RUNNER_TEMP/screenshots"
+          mkdir -p "$OUT"
+          if [ -d "$RUNNER_TEMP/TestResults.xcresult" ]; then
+            xcrun xcresulttool export attachments \
+              --path "$RUNNER_TEMP/TestResults.xcresult" \
+              --output-path "$OUT" || echo "No attachments exported"
+            python3 .github/scripts/name_screenshots.py "$OUT"
+          fi
+          ls -la "$OUT"
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: ${{ runner.temp }}/screenshots
+          if-no-files-found: warn
+      - name: Upload the generated Xcode project
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcodeproj
+          path: ios/MediCareAI.xcodeproj/project.pbxproj
