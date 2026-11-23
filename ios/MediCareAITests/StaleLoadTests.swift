@@ -1,21 +1,27 @@
 import XCTest
 @testable import MediCareAI
 
-/// Holds every request until the test opens it, to act out a slow network.
+/// Holds requests until the test opens it, to act out a slow network. A held request goes
+/// through after 5 seconds anyway, so a test that never opens the gate fails instead of hanging.
 private final class Gate: @unchecked Sendable {
     private let lock = NSLock()
-    private var waiting: [CheckedContinuation<Void, Never>] = []
+    private var waiting: [UUID: CheckedContinuation<Void, Never>] = [:]
     private var isOpen = false
 
     func pass() async {
+        let id = UUID()
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             lock.lock()
             if isOpen {
                 lock.unlock()
                 continuation.resume()
-            } else {
-                waiting.append(continuation)
-                lock.unlock()
+                return
+            }
+            waiting[id] = continuation
+            lock.unlock()
+            Task.detached { [weak self] in
+                try? await Task.sleep(nanoseconds: 5_000_000_000)
+                self?.release(id)
             }
         }
     }
@@ -23,8 +29,8 @@ private final class Gate: @unchecked Sendable {
     func open() {
         lock.lock()
         isOpen = true
-        let held = waiting
-        waiting = []
+        let held = Array(waiting.values)
+        waiting = [:]
         lock.unlock()
         held.forEach { $0.resume() }
     }
@@ -42,14 +48,34 @@ private final class Gate: @unchecked Sendable {
         }
         return hasWaiting
     }
+
+    private func release(_ id: UUID) {
+        lock.lock()
+        let continuation = waiting.removeValue(forKey: id)
+        lock.unlock()
+        continuation?.resume()
+    }
 }
 
-/// Answers like the server, but only once the gate opens.
+/// Answers like the server; the requests named in `holding` wait for the gate.
 private final class SlowAPI: APIServicing {
+    enum Request { case history, conversation, profile, settings }
+
     let gate = Gate()
+    private let holding: Set<Request>
     private(set) var questions: [String] = []
 
     private let date = Date(timeIntervalSince1970: 1_795_435_200)
+
+    init(holding: Set<Request>) {
+        self.holding = holding
+    }
+
+    private func respond(to request: Request) async {
+        if holding.contains(request) {
+            await gate.pass()
+        }
+    }
 
     func streamChat(question: String, conversationId: String?) async throws -> AsyncThrowingStream<ChatStreamEvent, Error> {
         questions.append(question)
@@ -57,7 +83,7 @@ private final class SlowAPI: APIServicing {
     }
 
     func fetchHistory(limit: Int, before: String?) async throws -> ConversationListResponse {
-        await gate.pass()
+        await respond(to: .history)
         let chat = Conversation(
             id: "c1", title: "Knees", lastMessage: "Rest helps.", messageCount: 2, createdAt: date, updatedAt: date
         )
@@ -65,7 +91,7 @@ private final class SlowAPI: APIServicing {
     }
 
     func fetchConversation(conversationId: String, limit: Int, before: String?) async throws -> ConversationMessagesResponse {
-        await gate.pass()
+        await respond(to: .conversation)
         let messages = [
             Message(id: "u1", role: .user, content: "Why do my knees hurt?", citations: [], confidence: nil,
                     requiresEmergencyCare: false, createdAt: date),
@@ -76,7 +102,7 @@ private final class SlowAPI: APIServicing {
     }
 
     func fetchV10() async throws -> V10Digest {
-        await gate.pass()
+        await respond(to: .profile)
         return V10Digest(digest: "Conditions:\n- Asthma", previousDigest: nil, canRevert: false, version: 2,
                          updatedAt: date, lastUpdateSource: "manual")
     }
@@ -85,7 +111,7 @@ private final class SlowAPI: APIServicing {
     func revertV10() async throws -> V10Digest { throw APIError.notFound }
 
     func fetchSettings() async throws -> UserSettings {
-        await gate.pass()
+        await respond(to: .settings)
         return UserSettings(fontSize: .extraLarge, highContrast: true, disclaimerAcceptedAt: nil, disclaimerVersion: nil)
     }
 
@@ -102,7 +128,7 @@ private struct SilentAnalytics: AnalyticsServicing {
 @MainActor
 final class StaleLoadTests: XCTestCase {
     func testChatListArrivingAfterSignOutIsDropped() async {
-        let api = SlowAPI()
+        let api = SlowAPI(holding: [.history])
         let viewModel = ConversationListViewModel(apiService: api, analytics: SilentAnalytics())
 
         let load = Task { await viewModel.loadInitial() }
@@ -117,7 +143,7 @@ final class StaleLoadTests: XCTestCase {
     }
 
     func testHealthProfileArrivingAfterSignOutIsDropped() async {
-        let api = SlowAPI()
+        let api = SlowAPI(holding: [.profile])
         let viewModel = V10ViewModel(apiService: api, analytics: SilentAnalytics())
 
         let load = Task { await viewModel.load() }
@@ -132,7 +158,7 @@ final class StaleLoadTests: XCTestCase {
     }
 
     func testSettingsArrivingAfterSignOutAreDropped() async {
-        let api = SlowAPI()
+        let api = SlowAPI(holding: [.settings])
         let viewModel = SettingsViewModel(apiService: api, analytics: SilentAnalytics())
 
         let load = Task { await viewModel.load() }
@@ -146,7 +172,7 @@ final class StaleLoadTests: XCTestCase {
     }
 
     func testNothingIsSentWhileAChatOpens() async {
-        let api = SlowAPI()
+        let api = SlowAPI(holding: [.conversation])
         let viewModel = ChatViewModel(apiService: api, analytics: SilentAnalytics())
 
         let opening = Task { await viewModel.loadConversation(conversationId: "c1") }

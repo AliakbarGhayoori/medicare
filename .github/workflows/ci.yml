@@ -68,6 +68,8 @@ jobs:
             -destination "id=${{ steps.simulator.outputs.udid }}" \
             -configuration Debug \
             -resultBundlePath "$RUNNER_TEMP/TestResults.xcresult" \
+            -test-timeouts-enabled YES \
+            -default-test-execution-time-allowance 300 \
             CODE_SIGNING_ALLOWED=NO \
             test
       - name: Export screenshots
