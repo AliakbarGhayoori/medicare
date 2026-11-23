@@ -1,91 +1,98 @@
 import SwiftUI
 
+/// Where a numbered fact comes from: the publisher, the page title, the passage used and a
+/// link to read the page itself.
 struct CitationDetailSheet: View {
     let citation: Citation
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
+
+    private var publisher: String {
+        SourceName.display(for: citation.source)
+    }
+
+    private var link: URL? {
+        guard !citation.url.isEmpty, let url = URL(string: citation.url),
+              let scheme = url.scheme?.lowercased(), scheme == "https" || scheme == "http" else {
+            return nil
+        }
+        return url
+    }
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 18) {
                     HStack(spacing: 8) {
-                        Text("Source \(citation.number)")
-                            .font(.caption)
-                            .fontWeight(.bold)
-                            .foregroundStyle(Color.mcAccent)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(
-                                Capsule(style: .continuous)
-                                    .fill(Color.mcCitationBadge)
-                            )
-
-                        Text(citation.source)
-                            .font(.caption)
-                            .foregroundStyle(Color.mcTextSecondary)
+                        CiteBadge(number: citation.number)
+                        Text(publisher)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(Color.mcInk2)
                     }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Source \(citation.number), \(publisher)")
 
                     Text(citation.title)
-                        .font(.title2)
-                        .fontWeight(.bold)
-                        .foregroundStyle(Color.mcTextPrimary)
+                        .font(.title2.weight(.bold))
+                        .foregroundStyle(Color.mcInk)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityAddTraits(.isHeader)
 
                     if !citation.snippet.isEmpty {
-                        Text(citation.snippet)
-                            .font(.callout)
-                            .foregroundStyle(Color.mcTextSecondary)
-                            .textSelection(.enabled)
-                            .padding(16)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(
-                                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                    .fill(Color.mcBackgroundSecondary)
-                            )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                    .stroke(Color.mcInputBorder.opacity(0.75), lineWidth: 1)
-                            )
-                    } else {
-                        Text("No source excerpt is available for this citation.")
-                            .font(.callout)
-                            .foregroundStyle(Color.mcTextSecondary)
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("What the page says")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(Color.mcInk2)
+                            HStack(alignment: .top, spacing: 12) {
+                                RoundedRectangle(cornerRadius: 2)
+                                    .fill(Color.mcCoral)
+                                    .frame(width: 4)
+                                    .accessibilityHidden(true)
+                                Text(citation.snippet)
+                                    .font(.body)
+                                    .foregroundStyle(Color.mcInk)
+                                    .textSelection(.enabled)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                        .padding(16)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.mcPaper, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                     }
 
-                    if citation.url.isEmpty {
-                        Label("No source link is available", systemImage: "exclamationmark.triangle")
-                            .font(.callout)
-                            .foregroundStyle(Color.mcWarningAmber)
-                    } else if let url = URL(string: citation.url) {
-                        Link(destination: url) {
-                            Label("Open Source in Safari", systemImage: "arrow.up.right.square")
-                                .frame(maxWidth: .infinity)
+                    if let link {
+                        Button {
+                            openURL(link)
+                        } label: {
+                            Label("Read it on \(publisher)", systemImage: "safari")
                         }
-                        .buttonStyle(.borderedProminent)
-                        .tint(Color.mcAccent)
+                        .buttonStyle(PrimaryButtonStyle())
+                        .accessibilityIdentifier("citation.open")
 
-                        Text(citation.url)
+                        Text(link.host ?? citation.url)
                             .font(.footnote)
-                            .foregroundStyle(Color.mcTextSecondary)
+                            .foregroundStyle(Color.mcInk2)
                             .textSelection(.enabled)
-                            .padding(12)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .fill(Color.mcBackgroundSecondary.opacity(0.75))
-                            )
+                    } else {
+                        Label("There is no link for this source.", systemImage: "link")
+                            .font(.subheadline)
+                            .foregroundStyle(Color.mcInk2)
                     }
                 }
-                .padding(16)
+                .padding(20)
             }
-            .background(Color.mcBackground)
-            .navigationTitle("Citation")
+            .background(Color.mcSurface.ignoresSafeArea())
+            .navigationTitle("Source \(citation.number)")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { dismiss() }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                        .accessibilityIdentifier("citation.done")
                 }
             }
         }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
     }
 }

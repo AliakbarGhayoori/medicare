@@ -1,29 +1,30 @@
 import SwiftUI
 
+/// A short message that floats at the top of a screen, then goes away.
 struct ToastView: View {
     let message: String
-    var icon: String = "checkmark.circle.fill"
-    var iconColor: Color = .mcSuccessGreen
+    var systemImage: String = "checkmark.circle.fill"
+    var tint: Color = .mcGreen
 
     var body: some View {
         HStack(spacing: 10) {
-            Image(systemName: icon)
-                .foregroundStyle(iconColor)
-                .font(.callout.weight(.semibold))
+            Image(systemName: systemImage)
+                .font(.headline)
+                .foregroundStyle(tint)
+                .accessibilityHidden(true)
             Text(message)
-                .font(.callout)
-                .foregroundStyle(Color.mcTextPrimary)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Color.mcInk)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(.horizontal, 18)
+        .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .background(
-            Capsule(style: .continuous)
-                .fill(Color.mcBackgroundSecondary)
-                .shadow(color: .black.opacity(0.1), radius: 10, y: 4)
-        )
-        .overlay(
-            Capsule(style: .continuous)
-                .stroke(Color.mcInputBorder.opacity(0.5), lineWidth: 1)
-        )
+        .background(Color.mcSurface, in: Capsule())
+        .overlay(Capsule().strokeBorder(Color.mcLine, lineWidth: 0.5))
+        .shadow(color: .black.opacity(0.12), radius: 12, y: 4)
+        .accessibilityElement(children: .combine)
+        .onAppear {
+            AccessibilityNotification.Announcement(message).post()
+        }
     }
 }

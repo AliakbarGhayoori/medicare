@@ -1,6 +1,6 @@
 import Foundation
 
-struct Conversation: Identifiable, Codable, Equatable {
+struct Conversation: Identifiable, Codable, Hashable {
     let id: String
     let title: String
     let lastMessage: String

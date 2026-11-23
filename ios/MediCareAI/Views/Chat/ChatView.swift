@@ -1,242 +1,266 @@
 import SwiftUI
 
+/// One conversation. Questions are bubbles on the right; each answer shows its sources,
+/// a one-line short answer, the explanation and "Do this" / "Watch for".
 struct ChatView: View {
-    @EnvironmentObject private var chatViewModel: ChatViewModel
+    @StateObject private var viewModel: ChatViewModel
+    @StateObject private var readAloud = ReadAloud()
+    @StateObject private var speech = SpeechInput()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     let conversation: Conversation?
-    var initialMessage: String?
+    let starter: ChatStarter?
 
     @State private var draft = ""
-    @State private var isNearBottom = true
+    @State private var hasStarted = false
+    @FocusState private var composerFocused: Bool
+
+    private let streamingID = "chat.streaming"
+    private let errorID = "chat.error"
+
+    /// - Parameter viewModel: evaluated once, when the screen first appears.
+    init(
+        viewModel: @autoclosure @escaping () -> ChatViewModel,
+        conversation: Conversation? = nil,
+        starter: ChatStarter? = nil
+    ) {
+        _viewModel = StateObject(wrappedValue: viewModel())
+        self.conversation = conversation
+        self.starter = starter
+    }
 
     var body: some View {
-        ZStack(alignment: .top) {
-            backgroundLayer
-
-            VStack(spacing: 0) {
-                ScrollViewReader { proxy in
-                    ScrollView {
-                        LazyVStack(spacing: 12) {
-                            if chatViewModel.messages.isEmpty && !chatViewModel.isStreaming {
-                                EmptyChatView { suggestion in
-                                    draft = suggestion
-                                    Task { await send() }
-                                }
-                            } else {
-                                activityBanner
-                            }
-
-                            ForEach(Array(chatViewModel.messages.enumerated()), id: \.element.id) { index, message in
-                                VStack(alignment: .leading, spacing: 8) {
-                                    if message.requiresEmergencyCare {
-                                        EmergencyBannerView()
-                                    }
-                                    MessageBubbleView(message: message) { citation in
-                                        chatViewModel.didTapCitation(citation)
-                                    }
-                                }
-                                .padding(.top, messagePadding(at: index))
-                                .id(message.id)
-                                .transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .bottom)))
-                            }
-
-                            if chatViewModel.isStreaming && !chatViewModel.streamingText.isEmpty {
-                                StreamingTextView(text: chatViewModel.streamingText)
-                                    .padding(.top, 10)
-                                    .id("streaming")
-                            }
-
-                            if chatViewModel.isStreaming && chatViewModel.streamingText.isEmpty && !chatViewModel.isSearching {
-                                TypingIndicatorView()
-                                    .padding(.top, 10)
-                                    .id("typing")
-                            }
-
-                            Color.clear.frame(height: 1)
-                                .id("bottom")
-                                .onAppear { isNearBottom = true }
-                                .onDisappear { isNearBottom = false }
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.top, 12)
-                        .padding(.bottom, 12)
-                    }
-                    .scrollDismissesKeyboard(.interactively)
-                    .onChange(of: chatViewModel.messages.count) {
-                        if isNearBottom, let last = chatViewModel.messages.last {
-                            scroll(proxy: proxy, to: last.id)
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    if showsWelcome {
+                        ChatWelcome(topic: topic) { example in
+                            draft = example
+                            composerFocused = true
                         }
                     }
-                    .onChange(of: chatViewModel.streamingText) {
-                        if isNearBottom {
-                            scroll(proxy: proxy, to: "streaming")
+
+                    if isOpeningConversation {
+                        HStack(spacing: 10) {
+                            HeartbeatActivity()
+                            Text("Opening your chat…")
+                                .font(.subheadline)
+                                .foregroundStyle(Color.mcInk2)
                         }
                     }
-                }
 
-                if let errorMessage = chatViewModel.errorMessage {
-                    errorCard(errorMessage)
-                        .padding(.horizontal, 16)
-                        .padding(.top, 4)
-                        .padding(.bottom, 2)
-                }
+                    ForEach(viewModel.messages) { message in
+                        Group {
+                            switch message.role {
+                            case .user:
+                                UserBubble(text: message.content)
+                            case .assistant:
+                                AnswerView(message: message) { viewModel.didTapCitation($0) }
+                            }
+                        }
+                        .id(message.id)
+                    }
 
-                ChatInputBar(text: $draft, isDisabled: chatViewModel.isStreaming) {
-                    Task { await send() }
+                    if viewModel.isStreaming {
+                        streamingAnswer
+                            .id(streamingID)
+                    }
+
+                    if let partial = viewModel.interruptedAnswer {
+                        AnswerBody(layout: AnswerLayout.parse(partial), onCite: { _ in })
+                    }
+
+                    if let error = viewModel.errorMessage {
+                        ChatErrorCard(
+                            title: errorTitle,
+                            message: error,
+                            canRetry: viewModel.lastFailedQuestion != nil && !viewModel.isStreaming
+                        ) {
+                            Task { await viewModel.retryLastFailedQuestion() }
+                        }
+                        .id(errorID)
+                    }
                 }
-                .accessibilityLabel("Chat input and send")
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+                .padding(.bottom, 24)
             }
-
-            // Toast overlay for profile updates
-            if let notice = chatViewModel.profileUpdatedNotice {
-                ToastView(message: notice)
-                    .padding(.top, 8)
-                    .transition(.move(edge: .top).combined(with: .opacity))
-                    .zIndex(100)
-                    .onAppear {
-                        Task {
-                            try? await Task.sleep(for: .seconds(3))
-                            withAnimation(.easeInOut(duration: 0.3)) {
-                                chatViewModel.dismissProfileUpdatedNotice()
-                            }
-                        }
-                    }
+            .scrollDismissesKeyboard(.interactively)
+            .accessibilityIdentifier("screen.chat")
+            .onChange(of: viewModel.messages.count) { oldCount, _ in
+                // Bring a new question (or a just-opened chat's last question) to the top,
+                // so its answer reads from the start. Arriving answers never move the page.
+                guard let last = viewModel.messages.last, last.role == .user || oldCount == 0 else { return }
+                if let question = viewModel.messages.last(where: { $0.role == .user }) {
+                    scroll(proxy, to: question.id, anchor: .top)
+                }
+            }
+            .onChange(of: viewModel.errorMessage) { _, newValue in
+                if newValue != nil {
+                    scroll(proxy, to: errorID, anchor: .bottom)
+                }
             }
         }
-        .navigationTitle(conversation?.title ?? "New Chat")
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            composerBar
+        }
+        .background(Color.mcSurface.ignoresSafeArea())
+        .navigationTitle(conversation?.title ?? "")
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(item: $chatViewModel.selectedCitation) { citation in
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                listenButton
+            }
+        }
+        .overlay(alignment: .top) {
+            profileNotice
+        }
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: viewModel.profileUpdatedNotice)
+        .sheet(item: $viewModel.selectedCitation) { citation in
             CitationDetailSheet(citation: citation)
         }
         .task {
-            if let conversation {
-                await chatViewModel.loadConversation(conversationId: conversation.id)
-            } else {
-                chatViewModel.startNewConversation()
+            await start()
+        }
+        .onChange(of: speech.transcript) { _, text in
+            if !text.isEmpty {
+                draft = text
             }
-            if let initialMessage, !initialMessage.isEmpty {
-                draft = initialMessage
-                Task { await send() }
+        }
+        .onDisappear {
+            readAloud.stop()
+            speech.stop()
+        }
+    }
+
+    // MARK: - Parts
+
+    private var streamingAnswer: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            ChatStatusLine(isWriting: !viewModel.streamingText.isEmpty, query: viewModel.searchingQuery)
+            if !viewModel.streamingText.isEmpty {
+                AnswerBody(layout: AnswerLayout.parse(viewModel.streamingText, isPartial: true), onCite: { _ in })
             }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var composerBar: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            if speech.isListening {
+                Text("Listening… Tap stop when you're done.")
+                    .font(.footnote)
+                    .foregroundStyle(Color.mcInk2)
+            } else if let problem = speech.problem {
+                Text(problem)
+                    .font(.footnote)
+                    .foregroundStyle(Color.mcInk2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Composer(
+                text: $draft,
+                placeholder: viewModel.messages.isEmpty ? topic.placeholder : "Ask a follow-up",
+                isBusy: viewModel.isStreaming,
+                isListening: speech.isListening,
+                focus: $composerFocused,
+                onSend: send,
+                onMic: { Task { await speech.toggle() } }
+            )
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(.bar)
+    }
+
+    @ViewBuilder
+    private var listenButton: some View {
+        if let answer = latestAnswer {
+            Button {
+                readAloud.toggle(answer.content)
+            } label: {
+                Label(
+                    readAloud.isSpeaking ? "Stop" : "Listen",
+                    systemImage: readAloud.isSpeaking ? "stop.fill" : "speaker.wave.2.fill"
+                )
+                .labelStyle(.titleAndIcon)
+            }
+            .disabled(viewModel.isStreaming)
+            .accessibilityLabel(readAloud.isSpeaking ? "Stop reading aloud" : "Listen to the answer")
+            .accessibilityIdentifier("chat.listen")
         }
     }
 
     @ViewBuilder
-    private func errorCard(_ errorMessage: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label("Could not complete your request", systemImage: "exclamationmark.circle.fill")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(Color.mcEmergencyRed)
-
-            Text(errorMessage)
-                .font(.callout)
-                .foregroundStyle(Color.mcTextSecondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-            if chatViewModel.lastFailedQuestion != nil {
-                Button("Try That Question Again") {
-                    Task { await chatViewModel.retryLastFailedQuestion() }
+    private var profileNotice: some View {
+        if let notice = viewModel.profileUpdatedNotice {
+            ToastView(message: notice, systemImage: "heart.text.square.fill", tint: .mcCoralInk)
+                .padding(.top, 8)
+                .padding(.horizontal, 16)
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .task {
+                    try? await Task.sleep(for: .seconds(4))
+                    viewModel.dismissProfileUpdatedNotice()
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(Color.mcAccent)
-                .font(.callout.weight(.semibold))
-            }
         }
-        .padding(12)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.mcBackgroundSecondary)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(Color.mcEmergencyRed.opacity(0.25), lineWidth: 1)
-        )
     }
 
-    private var backgroundLayer: some View {
-        LinearGradient(
-            colors: [
-                Color.mcBackground,
-                Color.mcBackgroundSecondary.opacity(0.5)
-            ],
-            startPoint: .top,
-            endPoint: .bottom
-        )
-        .overlay(alignment: .topTrailing) {
-            Circle()
-                .fill(Color.mcAccent.opacity(0.06))
-                .frame(width: 220, height: 220)
-                .offset(x: 50, y: -90)
-        }
-        .ignoresSafeArea()
+    // MARK: - State
+
+    private var topic: ChatTopic {
+        if case .topic(let topic) = starter { return topic }
+        return .general
     }
 
-    // Single activity banner that changes state
-    private var activityBanner: some View {
-        HStack(spacing: 10) {
-            if chatViewModel.isSearching || (chatViewModel.isStreaming && chatViewModel.streamingText.isEmpty) {
-                ProgressView()
-                    .tint(Color.mcAccent)
-            } else {
-                Circle()
-                    .fill(statusColor)
-                    .frame(width: 8, height: 8)
-            }
-
-            Text(statusText)
-                .font(.caption)
-                .foregroundStyle(Color.mcTextSecondary)
-                .lineLimit(1)
-
-            Spacer()
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 9)
-        .background(Color.mcBackgroundSecondary.opacity(0.6))
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .animation(.easeInOut(duration: 0.25), value: chatViewModel.isSearching)
-        .animation(.easeInOut(duration: 0.25), value: chatViewModel.isStreaming)
+    private var latestAnswer: Message? {
+        viewModel.messages.last { $0.role == .assistant }
     }
 
-    private var statusText: String {
-        if chatViewModel.isSearching {
-            if let query = chatViewModel.searchingQuery, !query.isEmpty {
-                return "Searching: \(query)"
-            }
-            return "Searching trusted sources..."
-        }
-        if chatViewModel.isStreaming {
-            return "Writing your answer..."
-        }
-        return "Evidence-backed, personalized guidance"
+    private var showsWelcome: Bool {
+        conversation == nil && viewModel.messages.isEmpty && !viewModel.isStreaming
+            && viewModel.interruptedAnswer == nil && viewModel.errorMessage == nil
     }
 
-    private var statusColor: Color {
-        if chatViewModel.isStreaming { return .mcWarningAmber }
-        return .mcSuccessGreen
+    private var isOpeningConversation: Bool {
+        conversation != nil && viewModel.messages.isEmpty && viewModel.errorMessage == nil
+            && !viewModel.isStreaming
     }
 
-    private func send() async {
-        let message = draft
+    private var errorTitle: String {
+        if viewModel.interruptedAnswer != nil { return "This answer was cut off" }
+        if viewModel.lastFailedQuestion != nil { return "I couldn't answer that" }
+        return "Something went wrong"
+    }
+
+    // MARK: - Actions
+
+    private func start() async {
+        guard !hasStarted else { return }
+        hasStarted = true
+        if let conversation {
+            viewModel.setConversation(conversation)
+            await viewModel.loadConversation(conversationId: conversation.id)
+        } else if case .question(let question) = starter {
+            Task { await viewModel.sendMessage(question) }
+        }
+    }
+
+    private func send() {
+        let question = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !question.isEmpty, !viewModel.isStreaming else { return }
+        speech.stop()
+        readAloud.stop()
         draft = ""
-        await chatViewModel.sendMessage(message)
+        composerFocused = false
+        Task { await viewModel.sendMessage(question) }
     }
 
-    private func scroll(proxy: ScrollViewProxy, to id: some Hashable) {
+    private func scroll(_ proxy: ScrollViewProxy, to id: some Hashable, anchor: UnitPoint) {
         if reduceMotion {
-            proxy.scrollTo(id, anchor: .bottom)
+            proxy.scrollTo(id, anchor: anchor)
         } else {
-            withAnimation {
-                proxy.scrollTo(id, anchor: .bottom)
+            withAnimation(.easeOut(duration: 0.3)) {
+                proxy.scrollTo(id, anchor: anchor)
             }
         }
-    }
-
-    private func messagePadding(at index: Int) -> CGFloat {
-        guard index > 0 else { return 0 }
-        let current = chatViewModel.messages[index]
-        let previous = chatViewModel.messages[index - 1]
-        return current.role == previous.role ? 6 : 12
     }
 }

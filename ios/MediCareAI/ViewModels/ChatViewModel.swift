@@ -13,6 +13,8 @@ final class ChatViewModel: ObservableObject {
     @Published var selectedCitation: Citation?
     @Published var currentConversationId: String?
     @Published var lastFailedQuestion: String?
+    /// The part of an answer that arrived before the connection or the server failed.
+    @Published var interruptedAnswer: String?
     @Published var profileUpdatedNotice: String?
 
     private let apiService: APIServicing
@@ -30,6 +32,7 @@ final class ChatViewModel: ObservableObject {
         streamingText = ""
         errorMessage = nil
         lastFailedQuestion = nil
+        interruptedAnswer = nil
         searchingTool = nil
         searchingQuery = nil
         profileUpdatedNotice = nil
@@ -60,25 +63,32 @@ final class ChatViewModel: ObservableObject {
         streamingText = ""
         errorMessage = nil
         lastFailedQuestion = nil
+        interruptedAnswer = nil
         searchingTool = nil
         searchingQuery = nil
         profileUpdatedNotice = nil
     }
 
     func sendMessage(_ content: String) async {
+        await send(content, showsQuestion: true)
+    }
+
+    private func send(_ content: String, showsQuestion: Bool) async {
         let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, !isStreaming else { return }
 
-        let userMessage = Message(
-            id: UUID().uuidString,
-            role: .user,
-            content: trimmed,
-            citations: [],
-            confidence: nil,
-            requiresEmergencyCare: false,
-            createdAt: .now
-        )
-        messages.append(userMessage)
+        if showsQuestion {
+            let userMessage = Message(
+                id: UUID().uuidString,
+                role: .user,
+                content: trimmed,
+                citations: [],
+                confidence: nil,
+                requiresEmergencyCare: false,
+                createdAt: .now
+            )
+            messages.append(userMessage)
+        }
 
         isStreaming = true
         isSearching = false
@@ -87,6 +97,7 @@ final class ChatViewModel: ObservableObject {
         streamingText = ""
         errorMessage = nil
         lastFailedQuestion = nil
+        interruptedAnswer = nil
         await primeKnownV10VersionIfNeeded()
         analytics.track(
             "question_asked",
@@ -141,33 +152,51 @@ final class ChatViewModel: ObservableObject {
                     await checkForAutoProfileUpdate()
 
                 case .error(let apiError):
-                    isStreaming = false
-                    isSearching = false
-                    searchingTool = nil
-                    searchingQuery = nil
-                    streamingText = ""
-                    errorMessage = apiError.errorDescription
-                    lastFailedQuestion = trimmed
-                    analytics.track("error_occurred", properties: ["code": apiError.analyticsCode])
+                    stopStreaming(
+                        failure: apiError.errorDescription ?? ErrorHandling.message(for: apiError),
+                        question: trimmed,
+                        code: apiError.analyticsCode
+                    )
                 }
             }
+            if isStreaming {
+                // The connection closed before the answer was complete.
+                stopStreaming(
+                    failure: "The answer was cut off. Please try again.",
+                    question: trimmed,
+                    code: "STREAM_ENDED"
+                )
+            }
         } catch {
-            isStreaming = false
-            isSearching = false
-            searchingTool = nil
-            searchingQuery = nil
-            streamingText = ""
-            errorMessage = ErrorHandling.message(for: error)
-            lastFailedQuestion = trimmed
-            let code = (error as? APIError)?.analyticsCode ?? "UNKNOWN"
-            analytics.track("error_occurred", properties: ["code": code])
+            stopStreaming(
+                failure: ErrorHandling.message(for: error),
+                question: trimmed,
+                code: (error as? APIError)?.analyticsCode ?? "UNKNOWN"
+            )
         }
     }
 
+    /// Ends a failed answer, keeping whatever text already arrived so it can still be read.
+    private func stopStreaming(failure: String, question: String, code: String) {
+        guard isStreaming else { return }
+        let partial = streamingText.trimmingCharacters(in: .whitespacesAndNewlines)
+        interruptedAnswer = partial.isEmpty ? nil : streamingText
+        streamingText = ""
+        isStreaming = false
+        isSearching = false
+        searchingTool = nil
+        searchingQuery = nil
+        errorMessage = failure
+        lastFailedQuestion = question
+        analytics.track("error_occurred", properties: ["code": code])
+    }
+
+    /// Asks the failed question again without showing it a second time.
     func retryLastFailedQuestion() async {
-        guard let lastFailedQuestion else { return }
+        guard let question = lastFailedQuestion else { return }
         analytics.track("chat_retry", properties: [:])
-        await sendMessage(lastFailedQuestion)
+        let alreadyShown = messages.last?.role == .user && messages.last?.content == question
+        await send(question, showsQuestion: !alreadyShown)
     }
 
     func didTapCitation(_ citation: Citation) {
