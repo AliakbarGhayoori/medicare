@@ -256,10 +256,11 @@ async def admit_question(
 
 
 async def _add(
-    db: AsyncIOMotorDatabase, firebase_uid: str, now: datetime, inc: dict[str, float]
+    db: AsyncIOMotorDatabase, firebase_uid: str | None, now: datetime, inc: dict[str, float]
 ) -> dict | None:
-    """Add to the four counters; return the service's month counter after the update."""
-    ids = _ids(firebase_uid, now)
+    """Add to the service's counters and, given a user, the user's; return the service's
+    month counter after the update."""
+    ids = _ids(firebase_uid, now) if firebase_uid else _service_ids(now)
     expiry = {
         "service_day": now + timedelta(days=_DAY_DOC_DAYS),
         "user_day": now + timedelta(days=_DAY_DOC_DAYS),
@@ -298,7 +299,10 @@ async def record_usage(
     inc: dict[str, float] = {"costUsd": round(max(0.0, cost_usd), 6)}
     if searches:
         inc["searches"] = searches
-    month = await _add(db, firebase_uid, now or utcnow(), inc)
+    # A user's counters exist only while the account does: a profile update can end
+    # after the user deleted the account, and must not bring their counters back.
+    account = await db.users.find_one({"firebaseUid": firebase_uid}, {"_id": 1})
+    month = await _add(db, firebase_uid if account else None, now or utcnow(), inc)
     spent = float((month or {}).get("costUsd", 0.0))
     log = logger.warning if spent >= 0.8 * settings.monthly_budget_usd else logger.info
     log(

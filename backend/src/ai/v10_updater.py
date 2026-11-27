@@ -122,6 +122,8 @@ async def update_v10_after_conversation(
             logger.warning("v10_update_skip reason=ai_error error=%s", type(exc).__name__)
             return False
         await record_usage(db, firebase_uid, _UNMETERED_UPDATE_COST_USD if cost is None else cost)
+        if await db.users.find_one({"firebaseUid": firebase_uid}, {"_id": 1}) is None:
+            return _skip("account_deleted")  # deleted while the update ran
         if finish_reason == "length":
             return _skip("truncated")
         if _is_no_change(reply):

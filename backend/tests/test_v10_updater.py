@@ -52,7 +52,11 @@ def _install(monkeypatch, ai_settings, reply, finish_reason="stop", cost=None) -
     return completions
 
 
-async def _update(mock_db, question: str = _QUESTION) -> bool:  # noqa: ANN001
+async def _update(mock_db, question: str = _QUESTION, account_exists: bool = True) -> bool:  # noqa: ANN001
+    if account_exists:
+        await mock_db.users.update_one(
+            {"firebaseUid": _UID}, {"$set": {"firebaseUid": _UID}}, upsert=True
+        )
     return await v10_updater.update_v10_after_conversation(
         db=mock_db,
         firebase_uid=_UID,
@@ -195,3 +199,18 @@ async def test_profile_update_waits_when_the_budget_is_spent(monkeypatch, ai_set
 
     assert await _update(mock_db) is False
     assert completions.requests == []
+
+
+async def test_update_finishing_after_account_deletion_leaves_nothing_for_the_user(
+    monkeypatch, ai_settings, mock_db
+):
+    # The update runs after the answer; the user may delete the account meanwhile.
+    _install(monkeypatch, ai_settings, "Medicines: agomelatine 12.5 mg (tapering)", cost=0.004)
+
+    assert await _update(mock_db, account_exists=False) is False
+
+    month = utcnow().strftime("%Y-%m")
+    assert await _stored_digest(mock_db) is None
+    assert await mock_db.usageCounters.count_documents({"firebaseUid": _UID}) == 0
+    service = await mock_db.usageCounters.find_one({"_id": f"service:month:{month}"})
+    assert service["costUsd"] == pytest.approx(0.004)

@@ -238,6 +238,14 @@ async def test_forgotten_reservation_expires(mock_db, monkeypatch) -> None:
     later.release()
 
 
+async def test_cost_of_a_deleted_account_counts_for_the_service_only(mock_db) -> None:
+    await record_usage(mock_db, "uid_gone", 0.02, now=_NOW)
+
+    assert await mock_db.usageCounters.count_documents({"firebaseUid": "uid_gone"}) == 0
+    month = await mock_db.usageCounters.find_one({"_id": f"service:month:{_MONTH}"})
+    assert month["costUsd"] == pytest.approx(0.02)
+
+
 async def test_record_usage_adds_to_existing_totals(mock_db) -> None:
     await record_usage(mock_db, "uid_1", 0.10, searches=1, now=_NOW)
     await record_usage(mock_db, "uid_1", 0.05, now=_NOW)
