@@ -28,3 +28,7 @@ async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
     # analyticsEvents: optional event storage for operational dashboards.
     await db.analyticsEvents.create_index([("firebaseUid", 1), ("createdAt", -1)])
     await db.analyticsEvents.create_index([("event", 1), ("createdAt", -1)])
+
+    # usageCounters: question and spending limits (services/usage_limits.py).
+    await db.usageCounters.create_index("firebaseUid")
+    await db.usageCounters.create_index("expiresAt", expireAfterSeconds=0)

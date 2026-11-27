@@ -5,10 +5,11 @@ import re
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from src.ai.client import chat_model_options, get_openai_client
+from src.ai.client import chat_model_options, get_openai_client, reported_cost
 from src.ai.prompts import V10_UPDATE_SYSTEM_PROMPT, V10_UPDATE_USER_TEMPLATE
 from src.config import get_settings
 from src.services.profile_service import get_v10_digest, upsert_v10_digest, usable_digest
+from src.services.usage_limits import record_usage, service_has_budget
 from src.utils import utcnow
 
 logger = logging.getLogger(__name__)
@@ -19,6 +20,9 @@ _NON_MEDICAL_PATTERNS = [
 _MAX_DIGEST_CHARS = 5000
 # Reasoning models spend part of max_tokens on thinking before the profile text.
 _MAX_UPDATE_TOKENS = 3000
+# At most ~3,000 output tokens plus a short prompt: about $0.05 with gemini-4-neon.
+_UPDATE_COST_RESERVE_USD = 0.06
+_UNMETERED_UPDATE_COST_USD = 0.02  # charged when OpenRouter reports no cost
 _MAX_CONTEXT_ANSWER_CHARS = 1200
 _NO_CHANGE = "NO_CHANGE"
 
@@ -58,8 +62,8 @@ async def _ask_model_for_digest(
     current_digest: str,
     user_question: str,
     assistant_response: str,
-) -> tuple[str, str | None]:
-    """Return the model's reply text and its finish reason."""
+) -> tuple[str, str | None, float | None]:
+    """Return the model's reply text, its finish reason and the reported cost."""
     settings = get_settings()
     client = get_openai_client()
 
@@ -81,7 +85,11 @@ async def _ask_model_for_digest(
     )
 
     choice = response.choices[0]
-    return (choice.message.content or "").strip(), getattr(choice, "finish_reason", None)
+    return (
+        (choice.message.content or "").strip(),
+        getattr(choice, "finish_reason", None),
+        reported_cost(getattr(response, "usage", None)),
+    )
 
 
 def _skip(reason: str) -> bool:
@@ -102,8 +110,10 @@ async def update_v10_after_conversation(
     current_digest = usable_digest(await get_v10_digest(db, firebase_uid)) or ""
 
     if _can_use_ai_update():
+        if not await service_has_budget(db, _UPDATE_COST_RESERVE_USD):
+            return _skip("budget_spent")
         try:
-            reply, finish_reason = await _ask_model_for_digest(
+            reply, finish_reason, cost = await _ask_model_for_digest(
                 current_digest=current_digest,
                 user_question=user_question,
                 assistant_response=assistant_response,
@@ -111,6 +121,7 @@ async def update_v10_after_conversation(
         except Exception as exc:
             logger.warning("v10_update_skip reason=ai_error error=%s", type(exc).__name__)
             return False
+        await record_usage(db, firebase_uid, _UNMETERED_UPDATE_COST_USD if cost is None else cost)
         if finish_reason == "length":
             return _skip("truncated")
         if _is_no_change(reply):

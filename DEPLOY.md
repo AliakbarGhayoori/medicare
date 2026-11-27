@@ -55,7 +55,9 @@ docker logs --since 5m medicare-backend
 Then run an end-to-end check with a temporary account: sign up through Firebase,
 call settings, profile, history and one chat question (expect at least one citation),
 then delete the account with `DELETE /api/account` and the body
-`{"confirmation": "DELETE"}`.
+`{"confirmation": "DELETE"}`. One account may ask 10 questions an hour, so run the
+full `scripts/live_e2e_check.py` against production in parts (`--only`). Every
+question is paid from the month's budget (about $0.05–0.15 each).
 
 After changing `.env.prod`, recreate the backend: settings are read once at startup.
 
@@ -125,6 +127,37 @@ docker logs -f medicare-mongo
 Logs never contain question, search query, answer or profile text. `/health` checks are
 not logged. Docker rotates the files (backend 20 MB × 5, MongoDB 10 MB × 3).
 
+### Usage and spending limits
+
+Before any AI call, `/api/chat/ask` checks (`backend/src/services/usage_limits.py`):
+
+- per user: 10 questions an hour, 20 a day, $2.50 of AI cost a month;
+- per internet address (nginx's `X-Real-IP`): 30 questions an hour across accounts;
+- the whole service: $10 a month and $2 a day (UTC), counting the model's cost as
+  OpenRouter reports it plus every web search at Tavily's pay-as-you-go price (an
+  overestimate while the free monthly credits last). Each answer in progress holds back
+  $0.50 until its real cost is known, and stops searching once it has cost $0.30.
+
+A refused question gets HTTP 429 with `Retry-After` and a plain message the app shows as
+is (`QUESTION_LIMIT` or `SERVICE_LIMIT`); nothing is saved. Profile updates after a chat
+also count and are skipped once the budget is spent. Change a limit in `.env.prod` (see
+the reference below) and recreate the backend.
+
+Spending lives in the `usageCounters` collection: `service:month:YYYY-MM` and
+`service:day:YYYY-MM-DD` for the service (no user id; month totals are kept), and
+`user:<uid>:month:…` / `user:<uid>:day:…` per user (deleted with the account; day
+counters expire after 40 days). This month's total:
+
+```bash
+docker exec medicare-mongo sh -c 'mongosh --quiet -u "$MONGO_INITDB_ROOT_USERNAME" \
+  -p "$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin medicare-ai --eval \
+  "printjson(db.usageCounters.find({_id: /^service:month:/}).sort({_id: -1}).limit(3).toArray())"'
+```
+
+The backend logs `usage_recorded cost=… month_total=… month_budget=…` after every answer,
+as a warning from 80% of the monthly budget on. The limits count only what this backend
+spends: another app or a test run using the same OpenRouter or Tavily key is not counted.
+
 ### Restart
 
 ```bash
@@ -179,7 +212,13 @@ docker stats --no-stream medicare-backend medicare-mongo
 | `ENVIRONMENT` | No | `production` | |
 | `AUTH_MODE` / `MOCK_AI` | No | `firebase` / `false` | Production values |
 | `ALLOWED_ORIGINS` | No | `["https://mediguide.co"]` | CORS origins |
-| `CHAT_RATE_LIMIT_PER_HOUR` / `V10_RATE_LIMIT_PER_HOUR` | No | `30` / `10` | Per user |
+| `CHAT_RATE_LIMIT_PER_HOUR` / `CHAT_QUESTIONS_PER_DAY` | No | `10` / `20` | Questions per user |
+| `IP_QUESTIONS_PER_HOUR` | No | `30` | Questions per internet address, across accounts |
+| `USER_MONTHLY_BUDGET_USD` | No | `2.50` | AI cost one user may cause in a month |
+| `MONTHLY_BUDGET_USD` / `DAILY_BUDGET_USD` | No | `10` / `2` | AI cost of the whole service (model + web search) |
+| `QUESTION_COST_LIMIT_USD` / `QUESTION_COST_RESERVE_USD` | No | `0.30` / `0.50` | An answer stops searching at the first; the second is held back per answer in progress |
+| `TAVILY_COST_PER_CREDIT_USD` | No | `0.008` | Tavily pay-as-you-go price (an advanced search is 2 credits) |
+| `V10_RATE_LIMIT_PER_HOUR` | No | `10` | Profile edits per user |
 | `ANALYTICS_ENABLED` / `ANALYTICS_STORE_DB` | No | `true` / `true` | Event logging and storage |
 
 ---
@@ -193,8 +232,9 @@ docker stats --no-stream medicare-backend medicare-mongo
   that exists in the data volume.
 - **Answers fail with `AI_ERROR`:** check `OPENROUTER_API_KEY`, and check that `AI_MODEL`
   and `AI_FALLBACK_MODELS` are valid OpenRouter ids.
-- **Rate limit errors (429):** raise `CHAT_RATE_LIMIT_PER_HOUR` in `.env.prod` and
-  recreate the backend.
+- **"Limit" errors (429):** `QUESTION_LIMIT` is one user's or one address's limit;
+  `SERVICE_LIMIT` means the daily or monthly budget is spent. See **Usage and
+  spending limits** to read the totals and change a limit.
 - **iOS connection errors:** `curl https://api.mediguide.co/health`; check the
   certificate with `certbot certificates`.
 

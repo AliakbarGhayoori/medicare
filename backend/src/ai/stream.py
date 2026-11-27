@@ -10,13 +10,14 @@ from typing import Any
 
 import openai
 
-from src.ai.client import chat_model_options, get_openai_client
+from src.ai.client import chat_model_options, get_openai_client, reported_cost
 from src.ai.policy import needs_research
 from src.ai.prompts import build_messages, build_system_prompt
 from src.ai.sources import SourceRegistry
 from src.ai.tavily import execute_tavily_search
 from src.config import get_settings
 from src.exceptions import APIError
+from src.services.usage_limits import UsageMeter
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +53,10 @@ _TAVILY_SEARCH_TOOL: dict[str, Any] = {
 }
 
 _CREATE_RETRY_ATTEMPTS = 2
+# Charged for a round that ran but whose cost OpenRouter never reported (the
+# connection broke first): about what a typical round costs, so the budget errs high.
+UNMETERED_ROUND_COST_USD = 0.05
+_DEFAULT_QUESTION_COST_LIMIT_USD = 0.30
 _FATAL_SEARCH_ERRORS = {"SEARCH_BACKEND_UNAVAILABLE", "SEARCH_BACKEND_AUTH_ERROR"}
 _TEXT_FIELDS = ("text", "summary", "data")
 
@@ -71,6 +76,8 @@ class RoundResult:
     reasoning_details: list[dict[str, Any]] = field(default_factory=list)
     finish_reason: str | None = None
     model: str | None = None  # the model that actually served the round (fallback-aware)
+    started: bool = False  # the model accepted the request, so it may be billed
+    cost: float | None = None  # dollars, as reported by OpenRouter
 
 
 def _chunk_text(text: str, chunk_size: int) -> list[str]:
@@ -226,16 +233,19 @@ def _merge_reasoning_items(merged: list[dict[str, Any]], items: list[Any]) -> No
 
 
 async def _stream_round(
-    client: Any, request_kwargs: dict[str, Any], round_idx: int
+    client: Any, request_kwargs: dict[str, Any], round_idx: int, result: RoundResult
 ) -> AsyncIterator[str | RoundResult]:
-    """Yield the round's text deltas as they arrive, then its RoundResult."""
+    """Yield the round's text deltas as they arrive, then ``result``, filled in."""
     stream = await _create_chat_with_retry(client=client, request_kwargs=request_kwargs)
-    result = RoundResult()
+    result.started = True
     calls: dict[int, dict[str, Any]] = {}
     try:
         async for chunk in stream:
             if result.model is None:
                 result.model = getattr(chunk, "model", None) or None
+            cost = reported_cost(getattr(chunk, "usage", None))
+            if cost is not None:
+                result.cost = cost
             choices = getattr(chunk, "choices", None) or []
             if not choices:
                 continue
@@ -334,14 +344,21 @@ async def generate_response_events(
     v10_digest: str | None,
     sources: SourceRegistry,
     answer_format: str | None = None,
+    meter: UsageMeter | None = None,
 ) -> AsyncIterator[dict]:
     """Stream one answer: research rounds first, then the answer token by token.
 
     Yields ``tool_use`` events while searching and ``token`` events with the raw
     model text (including the trailing SAFETY_SIGNAL line). Every search result
-    is numbered in ``sources``; the answer cites those numbers.
+    is numbered in ``sources``; the answer cites those numbers. What the answer
+    costs is added to ``meter``; once it reaches ``question_cost_limit_usd`` the
+    model must answer with what it has found.
     """
     settings = get_settings()
+    meter = meter if meter is not None else UsageMeter()
+    cost_limit = float(
+        getattr(settings, "question_cost_limit_usd", None) or _DEFAULT_QUESTION_COST_LIMIT_USD
+    )
 
     if not _can_use_live_ai(settings):
         async for event in _mock_events(question, v10_digest, sources, settings.sse_chunk_size):
@@ -380,7 +397,9 @@ async def generate_response_events(
         }
         # Withholding the tool is the only reliable way to force a final answer:
         # gemini-4-neon ignores tool_choice="none".
-        final_round = round_idx == max_rounds - 1 or searches >= max_searches
+        final_round = (
+            round_idx == max_rounds - 1 or searches >= max_searches or meter.total_usd >= cost_limit
+        )
         if not final_round:
             request["tools"] = [_TAVILY_SEARCH_TOOL]
             request["tool_choice"] = (
@@ -391,17 +410,23 @@ async def generate_response_events(
         started = time.monotonic()
         result = RoundResult()
         round_has_text = False
-        async for item in _stream_round(client, request, round_idx):
-            if isinstance(item, RoundResult):
-                result = item
-                continue
-            if not round_has_text and last_char and not last_char.isspace():
-                # A preamble from an earlier round must not run into this round's text.
-                yield {"type": "token", "text": "\n\n"}
-            round_has_text = True
-            produced_text = True
-            last_char = item[-1]
-            yield {"type": "token", "text": item}
+        try:
+            async for item in _stream_round(client, request, round_idx, result):
+                if isinstance(item, RoundResult):
+                    continue
+                if not round_has_text and last_char and not last_char.isspace():
+                    # A preamble from an earlier round must not run into this round's text.
+                    yield {"type": "token", "text": "\n\n"}
+                round_has_text = True
+                produced_text = True
+                last_char = item[-1]
+                yield {"type": "token", "text": item}
+        finally:
+            # Also when the round fails or the user leaves mid-answer: it was billed.
+            if result.cost is not None:
+                meter.add_model_cost(result.cost)
+            elif result.started:
+                meter.add_model_cost(UNMETERED_ROUND_COST_USD)
         round_ms = int((time.monotonic() - started) * 1000)
 
         if not result.tool_calls or final_round:
@@ -443,6 +468,7 @@ async def generate_response_events(
                 "query": _query_of(tool_call),
             }
         searches += len(runnable)
+        meter.add_searches(len(runnable))
 
         started = time.monotonic()
         tool_messages = await asyncio.gather(

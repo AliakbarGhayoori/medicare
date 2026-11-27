@@ -11,6 +11,8 @@ async def delete_user_account(db: AsyncIOMotorDatabase, firebase_uid: str) -> No
     await db.conversations.delete_many({"firebaseUid": firebase_uid})
     await db.v10Memories.delete_one({"firebaseUid": firebase_uid})
     await db.analyticsEvents.delete_many({"firebaseUid": firebase_uid})
+    # Usage counters keyed to the user; the service's own totals have no uid and stay.
+    await db.usageCounters.delete_many({"firebaseUid": firebase_uid})
     await db.users.delete_one({"firebaseUid": firebase_uid})
 
     if get_settings().auth_mode == "firebase":

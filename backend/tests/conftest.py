@@ -54,3 +54,15 @@ async def api_client(mock_db):
 @pytest.fixture
 def auth_headers() -> dict[str, str]:
     return {"Authorization": "Bearer mock:test_uid"}
+
+
+@pytest.fixture(autouse=True)
+def _fresh_limits():
+    """In-memory limits are process-wide; start every test with none used."""
+    from src.services import rate_limiter, usage_limits
+
+    rate_limiter._buckets.clear()
+    usage_limits._reservations.clear()
+    yield
+    rate_limiter._buckets.clear()
+    usage_limits._reservations.clear()

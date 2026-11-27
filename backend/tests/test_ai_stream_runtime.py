@@ -9,6 +9,7 @@ import pytest
 from src.ai import stream as stream_runtime
 from src.ai.sources import SourceRegistry
 from src.exceptions import APIError
+from src.services.usage_limits import UsageMeter
 
 # --- Fakes mirroring OpenAI/OpenRouter streaming chunks -----------------------
 
@@ -78,6 +79,8 @@ class _FakeStream:
 
     async def _iterate(self):  # noqa: ANN202
         for chunk in self._chunks:
+            if isinstance(chunk, Exception):
+                raise chunk  # the connection broke mid-answer
             yield chunk
 
 
@@ -292,7 +295,8 @@ async def test_fallback_routing_is_sent_with_every_round(monkeypatch, ai_setting
 
     for request in completions.requests:
         assert request["model"] == "test-model"
-        assert request["extra_body"] == {"models": ["test-model", "openai/gpt-5.4"]}
+        assert request["extra_body"]["models"] == ["test-model", "openai/gpt-5.4"]
+        assert request["extra_body"]["usage"] == {"include": True}
 
 
 # --- Search results and budgets ------------------------------------------------
@@ -477,3 +481,93 @@ async def test_default_format_keeps_the_old_system_prompt(monkeypatch, ai_settin
     await _run("Is coffee okay with metformin?")
 
     assert "Watch for:" not in completions.requests[0]["messages"][0]["content"]
+
+
+# --- Cost accounting -----------------------------------------------------------
+
+
+def _costed(chunks: list, cost: float) -> list:
+    """OpenRouter puts the request's cost on the last chunk of each round."""
+    chunks[-1].usage = SimpleNamespace(cost=cost)
+    return chunks
+
+
+async def _run_metered(meter: UsageMeter, question: str = "How should I manage dizziness?") -> None:
+    async for _ in stream_runtime.generate_response_events(
+        question=question,
+        conversation_history=[],
+        v10_digest=None,
+        sources=SourceRegistry(),
+        meter=meter,
+    ):
+        pass
+
+
+async def test_reported_round_costs_and_searches_reach_the_meter(
+    monkeypatch, ai_settings, searches
+):
+    meter = UsageMeter(search_cost_usd=0.016)
+    _install(
+        monkeypatch,
+        ai_settings,
+        [_costed(tool_round(["a", "b"]), 0.02), _costed(text_round("Done."), 0.03)],
+    )
+
+    await _run_metered(meter)
+
+    assert meter.model_cost_usd == pytest.approx(0.05)
+    assert meter.searches == 2
+
+
+async def test_cost_in_a_chunk_without_choices_is_counted(monkeypatch, ai_settings, searches):
+    meter = UsageMeter()
+    usage_only = SimpleNamespace(choices=[], usage=SimpleNamespace(cost=0.01))
+    _install(monkeypatch, ai_settings, [[*text_round("Hello there."), usage_only]])
+
+    await _run_metered(meter)
+
+    assert meter.model_cost_usd == pytest.approx(0.01)
+
+
+async def test_round_without_reported_cost_is_charged_an_estimate(
+    monkeypatch, ai_settings, searches
+):
+    meter = UsageMeter()
+    _install(monkeypatch, ai_settings, [tool_round(["a"]), text_round("Done.")])
+
+    await _run_metered(meter)
+
+    assert meter.model_cost_usd == pytest.approx(2 * stream_runtime.UNMETERED_ROUND_COST_USD)
+
+
+async def test_interrupted_round_is_charged_an_estimate(monkeypatch, ai_settings, searches):
+    meter = UsageMeter()
+    _install(monkeypatch, ai_settings, [[_chunk(content="Partial"), RuntimeError("cut")]])
+
+    with pytest.raises(APIError):
+        await _run_metered(meter)
+
+    assert meter.model_cost_usd == pytest.approx(stream_runtime.UNMETERED_ROUND_COST_USD)
+
+
+async def test_refused_request_is_not_charged(monkeypatch, ai_settings, searches):
+    meter = UsageMeter()
+    _install(monkeypatch, ai_settings, [_FakeAPIError(400)])
+
+    with pytest.raises(APIError):
+        await _run_metered(meter)
+
+    assert meter.model_cost_usd == 0
+
+
+async def test_cost_limit_stops_research_and_forces_the_answer(monkeypatch, ai_settings, searches):
+    ai_settings.question_cost_limit_usd = 0.35
+    meter = UsageMeter()
+    completions = _install(
+        monkeypatch, ai_settings, [_costed(tool_round(["a"]), 0.40), text_round("Done.")]
+    )
+
+    await _run_metered(meter)
+
+    assert "tools" not in completions.requests[1]
+    assert len(completions.requests) == 2

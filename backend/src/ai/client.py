@@ -32,15 +32,27 @@ def chat_model_options(settings: Any) -> dict[str, Any]:
     """Model selection shared by every chat completion call.
 
     Adds OpenRouter's ``models`` fallback list (tried in order when the primary
-    model fails) and an optional reasoning effort.
+    model fails), an optional reasoning effort, and asks for the request's cost.
     """
     options: dict[str, Any] = {"model": settings.ai_model}
-    extra_body: dict[str, Any] = {}
+    # OpenRouter then reports what each request cost (usage.cost), for the budget.
+    extra_body: dict[str, Any] = {"usage": {"include": True}}
     fallbacks = [m for m in settings.ai_fallback_models if m and m != settings.ai_model]
     if fallbacks:
         extra_body["models"] = [settings.ai_model, *fallbacks]
     if settings.ai_reasoning_effort:
         extra_body["reasoning"] = {"effort": settings.ai_reasoning_effort}
-    if extra_body:
-        options["extra_body"] = extra_body
+    options["extra_body"] = extra_body
     return options
+
+
+def reported_cost(usage: Any) -> float | None:
+    """The cost in dollars OpenRouter reported for one request, if it did."""
+    raw = usage.get("cost") if isinstance(usage, dict) else getattr(usage, "cost", None)
+    if raw is None:
+        return None
+    try:
+        cost = float(raw)
+    except (TypeError, ValueError):
+        return None
+    return cost if cost >= 0 else None

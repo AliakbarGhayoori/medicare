@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+import pytest
+
 from src.ai import client as ai_client
 from src.config import Settings
 
@@ -89,15 +91,36 @@ def test_chat_model_options_adds_openrouter_fallback_list() -> None:
     )
     assert ai_client.chat_model_options(settings) == {
         "model": "google/gemini-4-neon",
-        "extra_body": {"models": ["google/gemini-4-neon", "openai/gpt-5.4"]},
+        "extra_body": {
+            "models": ["google/gemini-4-neon", "openai/gpt-5.4"],
+            "usage": {"include": True},
+        },
     }
 
 
-def test_chat_model_options_without_fallbacks_or_effort_has_no_extra_body() -> None:
+def test_chat_model_options_always_asks_for_the_cost() -> None:
     settings = SimpleNamespace(ai_model="m", ai_fallback_models=[], ai_reasoning_effort=None)
-    assert ai_client.chat_model_options(settings) == {"model": "m"}
+    assert ai_client.chat_model_options(settings) == {
+        "model": "m",
+        "extra_body": {"usage": {"include": True}},
+    }
 
 
 def test_chat_model_options_passes_reasoning_effort() -> None:
     settings = SimpleNamespace(ai_model="m", ai_fallback_models=[], ai_reasoning_effort="low")
-    assert ai_client.chat_model_options(settings)["extra_body"] == {"reasoning": {"effort": "low"}}
+    assert ai_client.chat_model_options(settings)["extra_body"]["reasoning"] == {"effort": "low"}
+
+
+@pytest.mark.parametrize(
+    ("usage", "expected"),
+    [
+        (SimpleNamespace(cost=0.0123), 0.0123),
+        ({"cost": "0.5"}, 0.5),
+        (SimpleNamespace(prompt_tokens=3), None),
+        (None, None),
+        (SimpleNamespace(cost="n/a"), None),
+        (SimpleNamespace(cost=-1), None),
+    ],
+)
+def test_reported_cost_reads_openrouter_usage(usage, expected) -> None:  # noqa: ANN001
+    assert ai_client.reported_cost(usage) == expected

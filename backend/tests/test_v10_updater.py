@@ -7,6 +7,7 @@ import pytest
 
 from src.ai import v10_updater
 from src.services.profile_service import get_v10_digest, upsert_v10_digest
+from src.utils import utcnow
 
 _PLACEHOLDER = "(No health profile set up yet)"
 _QUESTION = "I take agomelatine 12.5 mg and I'm tapering off it over 4 weeks"
@@ -14,9 +15,10 @@ _UID = "uid_v10"
 
 
 class _FakeCompletions:
-    def __init__(self, reply: str | Exception, finish_reason: str) -> None:
+    def __init__(self, reply: str | Exception, finish_reason: str, cost: float | None) -> None:
         self._reply = reply
         self._finish_reason = finish_reason
+        self._cost = cost
         self.requests: list[dict] = []
 
     async def create(self, **kwargs):  # noqa: ANN003, ANN204
@@ -25,7 +27,8 @@ class _FakeCompletions:
             raise self._reply
         message = SimpleNamespace(content=self._reply)
         return SimpleNamespace(
-            choices=[SimpleNamespace(message=message, finish_reason=self._finish_reason)]
+            choices=[SimpleNamespace(message=message, finish_reason=self._finish_reason)],
+            usage=SimpleNamespace(cost=self._cost) if self._cost is not None else None,
         )
 
 
@@ -41,8 +44,8 @@ def ai_settings():  # noqa: ANN201
     )
 
 
-def _install(monkeypatch, ai_settings, reply, finish_reason="stop") -> _FakeCompletions:  # noqa: ANN001
-    completions = _FakeCompletions(reply, finish_reason)
+def _install(monkeypatch, ai_settings, reply, finish_reason="stop", cost=None) -> _FakeCompletions:  # noqa: ANN001
+    completions = _FakeCompletions(reply, finish_reason, cost)
     client = SimpleNamespace(chat=SimpleNamespace(completions=completions))
     monkeypatch.setattr(v10_updater, "get_settings", lambda: ai_settings)
     monkeypatch.setattr(v10_updater, "get_openai_client", lambda: client)
@@ -167,4 +170,28 @@ async def test_without_ai_the_heuristic_records_the_concern(monkeypatch, ai_sett
     assert await _update(mock_db) is True
 
     assert _QUESTION in (await _stored_digest(mock_db) or "")
+    assert completions.requests == []
+
+
+# --- Cost ----------------------------------------------------------------------
+
+
+async def test_profile_update_cost_is_recorded(monkeypatch, ai_settings, mock_db):
+    _install(monkeypatch, ai_settings, "Medicines: agomelatine 12.5 mg (tapering)", cost=0.004)
+
+    await _update(mock_db)
+
+    month = utcnow().strftime("%Y-%m")
+    service = await mock_db.usageCounters.find_one({"_id": f"service:month:{month}"})
+    user = await mock_db.usageCounters.find_one({"_id": f"user:{_UID}:month:{month}"})
+    assert service["costUsd"] == pytest.approx(0.004)
+    assert user["costUsd"] == pytest.approx(0.004)
+
+
+async def test_profile_update_waits_when_the_budget_is_spent(monkeypatch, ai_settings, mock_db):
+    month = utcnow().strftime("%Y-%m")
+    await mock_db.usageCounters.insert_one({"_id": f"service:month:{month}", "costUsd": 10.0})
+    completions = _install(monkeypatch, ai_settings, "Medicines: agomelatine 12.5 mg")
+
+    assert await _update(mock_db) is False
     assert completions.requests == []

@@ -64,6 +64,7 @@ medicare/
 │   │   │   ├── profile_service.py   # V10 digest CRUD with versioning
 │   │   │   ├── settings_service.py  # User settings + disclaimer
 │   │   │   ├── rate_limiter.py      # In-memory sliding window
+│   │   │   ├── usage_limits.py      # Question limits + daily/monthly AI budget
 │   │   │   ├── analytics.py         # Event tracking to MongoDB
 │   │   │   └── account_service.py   # Account deletion
 │   │   ├── dependencies/
@@ -142,7 +143,11 @@ Key env vars:
 - `AI_TOOL_MIN_CALLS`: Minimum Tavily searches before a health answer (default 2)
 - `AI_TOOL_MAX_CALLS`: Maximum total tool calls (default 12)
 - `TAVILY_INCLUDE_ANSWER`: keep `false` (only numbered search results may be cited)
-- `CHAT_RATE_LIMIT_PER_HOUR`: 30 per user
+- `CHAT_RATE_LIMIT_PER_HOUR`: 10 per user; `CHAT_QUESTIONS_PER_DAY`: 20 per user
+- `IP_QUESTIONS_PER_HOUR`: 30 per internet address (nginx `X-Real-IP`), across accounts
+- `USER_MONTHLY_BUDGET_USD` 2.50, `MONTHLY_BUDGET_USD` 10, `DAILY_BUDGET_USD` 2: AI cost
+  (OpenRouter's reported cost + Tavily searches at `TAVILY_COST_PER_CREDIT_USD`); see
+  `DEPLOY.md` → Usage and spending limits
 - `V10_RATE_LIMIT_PER_HOUR`: 10 per user
 
 ## iOS Schemes
@@ -229,6 +234,7 @@ mypy src/                      # Type check
 - `messages` — chat messages (conversationId, role, content, citations)
 - `v10Memories` — health profile (firebaseUid, digest, previousDigest, version)
 - `analyticsEvents` — event tracking
+- `usageCounters` — questions asked and AI cost per user and for the service, per day and month (limits)
 
 All documents keyed by `firebaseUid` for ownership. Indexes auto-created at startup.
 

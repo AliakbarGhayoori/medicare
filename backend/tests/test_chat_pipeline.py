@@ -11,7 +11,9 @@ _NO_EMERGENCY = 'SAFETY_SIGNAL: {"requiresEmergencyCare": false, "category": "no
 
 
 def _fake_generator(tokens: list[str], results: list[dict]):  # noqa: ANN202
-    async def _generate(question, conversation_history, v10_digest, sources, answer_format=None):  # noqa: ANN001, ANN202
+    async def _generate(
+        question, conversation_history, v10_digest, sources, answer_format=None, meter=None
+    ):  # noqa: ANN001, ANN202, E501
         sources.register(results)
         yield {"type": "tool_use", "tool": "tavily_search", "status": "searching", "query": "q"}
         for token in tokens:
@@ -97,7 +99,9 @@ async def test_placeholder_profile_is_not_sent_to_the_model(
     await upsert_v10_digest(mock_db, "test_uid", "(No health profile set up yet)")
     seen: dict = {}
 
-    async def _generate(question, conversation_history, v10_digest, sources, answer_format=None):  # noqa: ANN001, ANN202
+    async def _generate(
+        question, conversation_history, v10_digest, sources, answer_format=None, meter=None
+    ):  # noqa: ANN001, ANN202, E501
         seen["v10_digest"] = v10_digest
         yield {"type": "token", "text": "Hello."}
 
@@ -126,7 +130,9 @@ async def test_self_harm_words_get_crisis_resources_even_if_model_says_no_emerge
 
 
 def _recording_generator(seen: dict):  # noqa: ANN202
-    async def _generate(question, conversation_history, v10_digest, sources, answer_format=None):  # noqa: ANN001, ANN202
+    async def _generate(
+        question, conversation_history, v10_digest, sources, answer_format=None, meter=None
+    ):  # noqa: ANN001, ANN202, E501
         seen["answer_format"] = answer_format
         yield {"type": "token", "text": "Rest helps.\n" + _NO_EMERGENCY}
 

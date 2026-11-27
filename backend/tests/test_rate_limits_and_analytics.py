@@ -7,10 +7,10 @@ from src.services.analytics import _sanitize_properties
 
 
 async def test_chat_rate_limit_returns_retry_after(api_client, auth_headers, monkeypatch):
-    from src.api import chat as chat_api
+    from src.services import usage_limits
 
     monkeypatch.setattr(
-        chat_api,
+        usage_limits,
         "check_rate_limit_with_retry",
         lambda *args, **kwargs: (False, 42),
     )
@@ -23,7 +23,7 @@ async def test_chat_rate_limit_returns_retry_after(api_client, auth_headers, mon
 
     assert response.status_code == 429
     assert response.headers.get("Retry-After") == "42"
-    assert response.json()["error"]["code"] == "RATE_LIMITED"
+    assert response.json()["error"]["code"] == "QUESTION_LIMIT"
 
 
 def test_analytics_sanitization_filters_text_fields() -> None:

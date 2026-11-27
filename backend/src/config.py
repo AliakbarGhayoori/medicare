@@ -96,8 +96,19 @@ class Settings(BaseSettings):
     analytics_store_db: bool = False
 
     # Rate limits
-    chat_rate_limit_per_hour: int = 30
+    chat_rate_limit_per_hour: int = 10  # questions per user
     v10_rate_limit_per_hour: int = 10
+
+    # Usage limits (see services/usage_limits.py). Costs are in US dollars, months
+    # and days in UTC.
+    chat_questions_per_day: int = 20  # per user
+    ip_questions_per_hour: int = 30  # per internet address, across accounts
+    user_monthly_budget_usd: float = 2.50
+    monthly_budget_usd: float = 10.0  # the whole service: model + web search
+    daily_budget_usd: float = 2.0  # the whole service, so one bad day can't spend the month
+    question_cost_limit_usd: float = 0.30  # an answer stops searching once it has cost this
+    question_cost_reserve_usd: float = 0.50  # held back for each answer in progress
+    tavily_cost_per_credit_usd: float = 0.008  # pay-as-you-go price; advanced search = 2 credits
 
     @field_validator("allowed_origins", mode="before")
     @classmethod
